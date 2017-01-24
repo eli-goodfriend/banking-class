@@ -1,6 +1,8 @@
 """
 put csv file into a sql database
 make sure the database is running: sudo service postgresql start
+
+this is done only once
 """
 from sqlalchemy import create_engine, event, MetaData
 from sqlalchemy.schema import DDL
