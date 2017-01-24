@@ -9,8 +9,10 @@ from sqlalchemy import create_engine, event, MetaData
 from sqlalchemy.schema import DDL
 from sqlalchemy_utils import database_exists, create_database
 import pandas as pd
+import numpy as np
 
 datafile = '/home/eli/Data/Narmi/2015_Gaz_place_national.txt'
+filename = '/home/eli/Data/Narmi/cities_by_state.pickle'
 
 dbname = 'narmi_db'
 username = 'eli'
@@ -37,14 +39,18 @@ states = places.state.unique()
 
 # actually want a list of every city in each state
 cities_by_state = pd.DataFrame(states, columns=['state'])
-cities_by_state['cities'] = ""
+cities_by_state['cities'] = np.empty((len(cities_by_state), 0)).tolist()
 for index, row in cities_by_state.iterrows(): # TODO vectorize this
     st = row['state']
     cities_in_st = places.loc[places['state']==st]
     cities_by_state['cities'][index] = cities_in_st['city'].tolist()
 
 # put it in the database
-cities_by_state.to_sql('us_cities', engine, if_exists='replace')
+# this is annoying, bc sql messes up the list
+#cities_by_state.to_sql('us_cities', engine, if_exists='replace')
+
+# save the dataframe
+cities_by_state.to_pickle(filename)
 
 
 

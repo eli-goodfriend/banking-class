@@ -10,6 +10,8 @@ import psycopg2
 import pandas as pd
 import transact as trans
 
+filename = '/home/eli/Data/Narmi/cities_by_state.pickle' 
+
 # connect to database
 dbname = 'narmi_db'
 username = 'eli'
@@ -22,9 +24,13 @@ con = psycopg2.connect(connect_str)
 sql_query = "SELECT * FROM narmi_data;"
 narmi_data = pd.read_sql_query(sql_query,con)
 
+#### DEBUG BC THIS SHIT IS SLOW #####
+narmi_data = narmi_data.head(100)
+
 # pull locations table
-sql_query = "SELECT * FROM us_cities;"
-us_cities = pd.read_sql_query(sql_query,con)
+#sql_query = "SELECT * FROM us_cities;"
+#us_cities = pd.read_sql_query(sql_query,con)
+us_cities = pd.read_pickle(filename)
 
 # clean dates, times, phone numbers, and headers
 trans.cleanData(narmi_data)
@@ -33,7 +39,7 @@ trans.cleanData(narmi_data)
 trans.findLocations(narmi_data, us_cities)
 
 print narmi_data.head()
-
+narmi_data.to_csv('donkey.csv')
 
 
 
