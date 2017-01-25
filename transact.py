@@ -24,6 +24,7 @@ def cleanData(raw_data):
     raw_data['description'] = raw_data['description'].str.replace(phrase, '')
     
     # pull out any phone numbers
+    # TODO misses 800-COMCAST
     phoneRegex = '([0-9][0-9][0-9]-[0-9][0-9][0-9]-[0-9][0-9][0-9])'
     raw_data['phone'] = raw_data['raw'].str.extract(phoneRegex, expand = True)
     raw_data['description'] = raw_data['description'].str.replace(phoneRegex, '')
@@ -49,7 +50,8 @@ def findLocations(trans_data, state_data):
     trans_data['state'] = trans_data['description'].str.extract(regex, expand = True)
     trans_data['description'] = trans_data['description'].str.replace(regex, '')
     trans_data['description'] = trans_data['description'].str.strip()
-    #TODO what if the state isn't at the end?    
+    # TODO what if the state isn't at the end?    
+    # TODO misclassifies BARBRI as BARB located in RI
 
     
     # find if any cities in this state are present as a substring
@@ -71,15 +73,28 @@ def findMerchant(trans_data):
     trans_data['merchant'] = trans_data['description']
 
     # clean out known initial intermediary flags
-    # TODO keep this?
-    third_parties = ['SQ \*','LEVELUP\*']
+    # TODO keep this in a separate column?
+    # TODO get a list of these from somewhere?
+    third_parties = ['SQ \*','LEVELUP\*','PAYPAL \*','SQC\*']
     regex = '^(' + '|'.join(third_parties) + ')'
     trans_data['merchant'] = trans_data['merchant'].str.replace(regex, '', case = False, flags = re.IGNORECASE)
     
+    # clean out strings that are more than one whitespace unit from the left
+    regex = '\s\s+.+$'
+    trans_data['merchant'] = trans_data['merchant'].str.replace(regex, '', case = False, flags = re.IGNORECASE)
+    trans_data['merchant'] = trans_data['merchant'].str.strip()
     
+    # clean out the chunks of Xs that come from redacting ID numbers
+    regex = 'X+-?X+' 
+    trans_data['merchant'] = trans_data['merchant'].str.replace(regex, '', case = False, flags = re.IGNORECASE)
+    trans_data['merchant'] = trans_data['merchant'].str.strip() 
     
+    # clean out strings that look like franchise numbers
+    regex = '[#]?([0-9]){3,999}$' # TODO this is not correct: too broad
+    trans_data['merchant'] = trans_data['merchant'].str.replace(regex, '', case = False, flags = re.IGNORECASE)
+    trans_data['merchant'] = trans_data['merchant'].str.strip()
     
-    
+
     
     
     

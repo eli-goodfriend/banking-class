@@ -44,7 +44,6 @@ end = time.time()
 time_per_pt = (end - start) / len(narmi_data)
 print "Time per data point = " + str(time_per_pt) + " seconds."
 narmi_data.to_csv('cleaned.csv')
-print narmi_data.head()
 
 
 
