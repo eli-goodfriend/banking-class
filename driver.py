@@ -14,7 +14,7 @@ import time
 filename = '/home/eli/Data/Narmi/cities_by_state.pickle' 
 filename_all = '/home/eli/Data/Narmi/all_cities.pickle'
 
-# connect to database
+# --- pull data ---
 dbname = 'narmi_db'
 username = 'eli'
 password = 'eli'
@@ -22,24 +22,23 @@ con = None
 connect_str = "dbname='%s' user='%s' host='localhost' password='%s'"%(dbname,username,password)
 con = psycopg2.connect(connect_str)
 
-# pull transaction data
 sql_query = "SELECT * FROM narmi_data;"
 narmi_data = pd.read_sql_query(sql_query,con)
 narmi_data = narmi_data.head(1000)
 
-# pull locations table
 us_cities = pd.read_pickle(filename)
 
 start = time.time()
-# clean dates, times, phone numbers, and headers
-trans.cleanData(narmi_data)
+# --- clean the data ---
+trans.makeDesc(narmi_data) # initialize the description field
 
-# find locations, if applicable
-trans.findLocations(narmi_data, us_cities)
+trans.cleanData(narmi_data) # clean dates, times, phone numbers, and headers
 
-# extract merchant from transaction description
-trans.findMerchant(narmi_data)
+trans.findLocations(narmi_data, us_cities) # find locations, if applicable
 
+trans.findMerchant(narmi_data) # extract merchant from transaction description
+
+# --- report ---
 end = time.time()
 time_per_pt = (end - start) / len(narmi_data)
 print "Time per data point = " + str(time_per_pt) + " seconds."

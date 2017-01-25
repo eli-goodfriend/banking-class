@@ -7,49 +7,48 @@ import psycopg2
 import pandas as pd
 import re
 
-def cleanData(raw_data):
+def throwOut(df,col,regex):
+    df[col] = df[col].str.replace(regex,'',case = False,flags = re.IGNORECASE)
+    
+def move(df,colIn,colOut,regex):
+    df[colOut] = df[colIn].str.extract(regex,flags = re.IGNORECASE,expand = True)
+    throwOut(df,colIn,regex)
+    
+def strip(df,col):
+    df[col] = df[col].str.strip()
+    
+def makeDesc(df):
+    df['description'] = df['raw']
+
+def cleanData(df):
     # use regex to pull out date and time
-    timeRegex = '([0-9][0-9]:[0-9][0-9]:[0-9][0-9])'
-    raw_data['time'] = raw_data['raw'].str.extract(timeRegex, expand = True)
-    raw_data['description'] = raw_data['raw'].str.replace(timeRegex, '')
-    
-    dateRegex = '([0-1][0-9]/[0-3][0-9])'
-    raw_data['date'] = raw_data['raw'].str.extract(dateRegex, expand = True)
-    raw_data['description'] = raw_data['description'].str.replace(dateRegex, '')
-    # TODO there are more dates, like Jul 25
-    # --- but some of those are part of Uber transactions...
-    
+    move(df,'description','time','([0-9][0-9]:[0-9][0-9]:[0-9][0-9])')  
+    move(df,'description','date','([0-1][0-9]/[0-3][0-9])')
+
     # remove the phrase 'Branch Cash Withdrawal' since it is in every entry
-    phrase = 'Branch Cash Withdrawal'
-    raw_data['description'] = raw_data['description'].str.replace(phrase, '')
+    throwOut(df,'description','Branch Cash Withdrawal')
     
     # pull out any phone numbers
     # TODO misses 800-COMCAST
-    phoneRegex = '([0-9][0-9][0-9]-[0-9][0-9][0-9]-[0-9][0-9][0-9])'
-    raw_data['phone'] = raw_data['raw'].str.extract(phoneRegex, expand = True)
-    raw_data['description'] = raw_data['description'].str.replace(phoneRegex, '')
+    move(df,'description','phone','([0-9][0-9][0-9]-[0-9][0-9][0-9]-[0-9][0-9][0-9])')
     
     # remove the POS designation from the front of descriptions
-    regex = '^POS '
-    raw_data['description'] = raw_data['description'].str.strip()
-    raw_data['description'] = raw_data['description'].str.replace(regex, '')
+    strip(df,'description')
+    throwOut(df,'description','^POS ')
     
-    
-def findLocations(trans_data, state_data):
+def findLocations(df, state_data):
     # does it end with a country code?
     # TODO country code list, not just US
-    trans_data['country'] = trans_data['raw'].str.extract('(US)$', expand = True)
-    trans_data['description'] = trans_data['description'].str.replace('US', '')
-    trans_data['description'] = trans_data['description'].str.strip()
+    move(df,'description','country','(US)$')
+    strip(df,'description')
     
     # find the state # TODO untidy
     us_states = state_data['state']
     states = us_states.to_string(header=False, index=False)
     states = re.sub('\n','|',states)
     regex = '(' + states + ')$'
-    trans_data['state'] = trans_data['description'].str.extract(regex, expand = True)
-    trans_data['description'] = trans_data['description'].str.replace(regex, '')
-    trans_data['description'] = trans_data['description'].str.strip()
+    move(df,'description','state',regex)
+    strip(df,'description')
     # TODO what if the state isn't at the end?    
     # TODO misclassifies BARBRI as BARB located in RI
 
@@ -60,39 +59,36 @@ def findLocations(trans_data, state_data):
     # TODO misses cities that get cut off bc they are too long
     # TODO misses cities that aren't in database bc they are technically neighborhoods
     all_cities = [city for row in state_data['cities'] for city in row]
-    trans_data['city'] = ""
+    df['city'] = ""
     regex = '(' + '|'.join(all_cities) + ')$'
-    trans_data['city'] = trans_data['description'].str.extract(regex, re.IGNORECASE)
-    trans_data['description'] = trans_data['description'].str.replace(regex, '', case = False, flags = re.IGNORECASE)
-    trans_data['description'] = trans_data['description'].str.strip()
+    move(df,'description','city',regex)
+    strip(df,'description')
     # TODO what if there's another city name in the string for whatever reason?
     # --- what if it finds a city name that's not a city in that state?
     # TODO what if the city isn't at the end?
 
-def findMerchant(trans_data):
-    trans_data['merchant'] = trans_data['description']
+def findMerchant(df):
+    df['merchant'] = df['description']
 
     # clean out known initial intermediary flags
     # TODO keep this in a separate column?
     # TODO get a list of these from somewhere?
     third_parties = ['SQ \*','LEVELUP\*','PAYPAL \*','SQC\*']
     regex = '^(' + '|'.join(third_parties) + ')'
-    trans_data['merchant'] = trans_data['merchant'].str.replace(regex, '', case = False, flags = re.IGNORECASE)
+    throwOut(df,'merchant',regex)
     
     # clean out strings that are more than one whitespace unit from the left
-    regex = '\s\s+.+$'
-    trans_data['merchant'] = trans_data['merchant'].str.replace(regex, '', case = False, flags = re.IGNORECASE)
-    trans_data['merchant'] = trans_data['merchant'].str.strip()
+    throwOut(df,'merchant','\s\s+.+$')
+    strip(df,'merchant')
     
     # clean out the chunks of Xs that come from redacting ID numbers
-    regex = 'X+-?X+' 
-    trans_data['merchant'] = trans_data['merchant'].str.replace(regex, '', case = False, flags = re.IGNORECASE)
-    trans_data['merchant'] = trans_data['merchant'].str.strip() 
+    throwOut(df,'merchant','X+-?X+')
+    strip(df,'merchant')
     
     # clean out strings that look like franchise numbers
-    regex = '[#]?([0-9]){3,999}$' # TODO this is not correct: too broad
-    trans_data['merchant'] = trans_data['merchant'].str.replace(regex, '', case = False, flags = re.IGNORECASE)
-    trans_data['merchant'] = trans_data['merchant'].str.strip()
+    # TODO this is not correct: too broad
+    throwOut(df,'merchant','[#]?([0-9]){3,999}$')
+    strip(df,'merchant')
     
 
     
