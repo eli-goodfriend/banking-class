@@ -10,9 +10,11 @@ from sqlalchemy.schema import DDL
 from sqlalchemy_utils import database_exists, create_database
 import pandas as pd
 import numpy as np
+import pickle
 
 datafile = '/home/eli/Data/Narmi/2015_Gaz_place_national.txt'
 filename = '/home/eli/Data/Narmi/cities_by_state.pickle'
+filename_all = '/home/eli/Data/Narmi/all_cities.pickle'
 
 dbname = 'narmi_db'
 username = 'eli'
