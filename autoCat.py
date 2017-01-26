@@ -12,11 +12,9 @@ from sklearn import metrics
 datafile = '/home/eli/Dropbox/Code/Narmi/categorized.csv'
 transData = pd.read_csv(datafile,encoding='latin-1')
 
-transData = transData[['merchant','date','time','isFood','isTransport','isRetail','isUnknown']]
+transData = transData[['merchant','date','time','category']]
 
 # make target column
-# TODO make this less janky, make it this way to start with
-transData['category'] = 1*transData.isFood + 2*transData.isTransport + 3*transData.isRetail - 1
 # TODO also do this earlier
 transData.merchant = transData.merchant.str.upper()
 

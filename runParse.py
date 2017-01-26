@@ -1,5 +1,5 @@
 """
-load raw data from sql
+load raw data from csv
 clean out known data types (dates, times, phone numbers, headers)
 find locations, if applicable (currently US state and city)
 identify and clean business
