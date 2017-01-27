@@ -3,9 +3,7 @@ test the model on a hand categorized gold standard
 """
 import pickle
 import pandas as pd
-import parse as ps
-import lookupCat as lc
-import extractFeatures as ef
+import transact as ts
 from sklearn import linear_model
 from sklearn import metrics
 import numpy as np
@@ -21,9 +19,9 @@ logreg = pickle.load(modelFileLoad)
 fileCities = '/home/eli/Data/Narmi/cities_by_state.pickle' 
 us_cities = pd.read_pickle(fileCities)
 
-ps.parseTransactions(testData,'raw',us_cities)
+ts.parseTransactions(testData,'raw',us_cities)
 
-lc.lookupTransactions(testData) # makes category column to hold lookups
+ts.lookupTransactions(testData) # makes category column to hold lookups
 
 testData.merchant = testData.merchant.str.upper() # TODO this earlier
 testData.loc[testData.truth=='food','truth'] = 0 # TODO messed this up
@@ -35,7 +33,7 @@ catData = testData[testData.category >= 0]
 uncatData = testData[testData.category < 0]
 print str(float(len(catData))/float(len(testData)) * 100.) + "% of transactions categorized with lookup."
 
-X = ef.extract(uncatData) # uses hashing vectorizer
+X = ts.extract(uncatData) # uses hashing vectorizer
 uncat_pred = logreg.predict(X)
 uncatData.category = uncat_pred
 testData = pd.concat([catData, uncatData])

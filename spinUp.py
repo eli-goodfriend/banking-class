@@ -5,9 +5,7 @@ future iterations will refine the logistic regression and add new (words) featur
 the bulk of the operation is reading new transactions and refining the logreg
 """
 import pandas as pd
-import parse as ps
-import lookupCat as lc
-import extractFeatures as ef
+import transact as ts
 from sklearn import linear_model
 import numpy as np
 import time
@@ -23,7 +21,7 @@ narmi_data = pd.read_csv(fileTrans)
 us_cities = pd.read_pickle(fileCities)
 
 start = time.time()
-ps.parseTransactions(narmi_data,'raw',us_cities)
+ts.parseTransactions(narmi_data,'raw',us_cities)
 end = time.time()
 
 
@@ -37,20 +35,20 @@ fileClean = '/home/eli/Data/Narmi/train_clean.csv'
 fileCat = '/home/eli/Data/Narmi/train_cat.csv'
 transData = pd.read_csv(fileClean)
 
-lc.lookupTransactions(transData) # makes category column to hold lookups
+ts.lookupTransactions(transData) # makes category column to hold lookups
 
 transData.merchant = transData.merchant.str.upper() # TODO this earlier
 catData = transData[transData.category >= 0]
 uncatData = transData[transData.category < 0]
 
-X = ef.extract(catData) # uses hashing vectorizer
+X = ts.extract(catData) # uses hashing vectorizer
 y = catData.category.tolist()
 logreg = linear_model.SGDClassifier(loss='log')
 logreg.partial_fit(X,y,np.unique(y))
 acc = logreg.score(X,y)
 print "Accuracy of pre-categorized train set is " + str(acc*100) + "%"
 
-X = ef.extract(uncatData)
+X = ts.extract(uncatData)
 uncat_pred = logreg.predict(X)
 # TODO ... do I retrain the model with a partial_fit on its new "correct" answers?
 

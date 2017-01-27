@@ -1,11 +1,12 @@
-"""
-extract features using sklearn vectorizer
-input: df cleaned transaction dataframe
-output: X an array of features
-"""
+
 from sklearn.feature_extraction.text import HashingVectorizer
 
 def extract(df):
+    """
+    extract features using sklearn vectorizer
+    input: df cleaned transaction dataframe
+    output: X an array of features
+    """
     # turn time string into number from [0,1) 
     # TODO do this earlier and less jankily
     # TODO use datetime?

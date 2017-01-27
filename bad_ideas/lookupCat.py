@@ -1,18 +1,19 @@
-"""
-categorize transactions for major retailers from a lookup table
-input transData: dataframe containing cleaned transaction data, 
-                 with a merchant column
-updates transData with a 'category' column, containing
-    NaN: unknown
-    0: food
-    1: transport
-    2: retail
-    TODO standardize this from a file
-"""
+
 import pandas as pd
 import re
 
 def lookupTransactions(transData):
+    """
+    categorize transactions for major retailers from a lookup table
+    input transData: dataframe containing cleaned transaction data, 
+                     with a merchant column
+    updates transData with a 'category' column, containing
+        NaN: unknown
+        0: food
+        1: transport
+        2: retail
+        TODO standardize this from a file
+    """
     # TODO janky
     foodMerchants = ['pizza','safeway','food','grocer','cafe','chipotle','mc[.]donalds','deli']
     transportMerchants = ['lyft','uber','greyhound']

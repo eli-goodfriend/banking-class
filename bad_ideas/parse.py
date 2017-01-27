@@ -1,10 +1,4 @@
-"""
-parseTransactions regex parser
-inputs df: pandas dataframe with unparsed transactions
-       col: name of column with unparsed transactions
-       cities: pandas dataframe of city names
-updates df with new parsed columns       
-"""
+
 import re
 
 def throwOut(df,col,regex):
@@ -91,6 +85,13 @@ def findMerchant(df):
     strip(df,'merchant')
     
 def parseTransactions(df,col,cities):
+    """
+    parseTransactions regex parser
+    inputs df: pandas dataframe with unparsed transactions
+           col: name of column with unparsed transactions
+           cities: pandas dataframe of city names
+    updates df with new parsed columns       
+    """
     makeDesc(df,col) # initialize the description field
 
     print 'basic cleaning...'
