@@ -3,7 +3,7 @@ extract features using sklearn vectorizer
 input: df cleaned transaction dataframe
 output: X an array of features
 """
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import HashingVectorizer
 
 def extract(df):
     # turn time string into number from [0,1) 
@@ -26,7 +26,7 @@ def extract(df):
     # TODO like make a list of merchants and if a new one is similar enough, change
     #      it to a pre-existing merchant
     # cut one: just do what sklearn tells us to do
-    vectorizer = CountVectorizer(min_df=1)
+    vectorizer = HashingVectorizer(n_features = 2 ** 5)
     
     documents = df.merchant.tolist()
     wordCounts = vectorizer.fit_transform(documents)

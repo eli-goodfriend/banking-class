@@ -9,7 +9,9 @@ import parse as ps
 import lookupCat as lc
 import extractFeatures as ef
 from sklearn import linear_model
+import numpy as np
 import time
+import pickle
 
 """
 normally would run this, but it takes too long to run every time when debugging
@@ -30,7 +32,9 @@ print "Time per data point = " + str(time_per_pt) + " seconds."
 narmi_data.to_csv(fileClean)
 """
 
+modelName = 'transaction_logreg'
 fileClean = '/home/eli/Data/Narmi/train_clean.csv'
+fileCat = '/home/eli/Data/Narmi/train_cat.csv'
 transData = pd.read_csv(fileClean)
 
 lc.lookupTransactions(transData) # makes category column to hold lookups
@@ -39,14 +43,26 @@ transData.merchant = transData.merchant.str.upper() # TODO this earlier
 catData = transData[transData.category >= 0]
 uncatData = transData[transData.category < 0]
 
-X = ef.extract(catData)
+X = ef.extract(catData) # uses hashing vectorizer
 y = catData.category.tolist()
-logreg = linear_model.LogisticRegression()
-logreg.fit(X,y)
+logreg = linear_model.SGDClassifier(loss='log')
+logreg.partial_fit(X,y,np.unique(y))
 acc = logreg.score(X,y)
 print "Accuracy of pre-categorized train set is " + str(acc*100) + "%"
 
+X = ef.extract(uncatData)
+uncat_pred = logreg.predict(X)
+# TODO ... do I retrain the model with a partial_fit on its new "correct" answers?
 
+uncatData.category = uncat_pred
+transData = pd.concat([catData, uncatData])
+transData.sort_index(inplace=True) # for convenience of comparing to original order
+transData.to_csv(fileCat)
+
+# Saving logistic regression model from training set 1
+modelFileSave = open(modelName, 'wb')
+pickle.dump(logreg, modelFileSave)
+modelFileSave.close()
 
 
 
