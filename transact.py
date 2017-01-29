@@ -5,6 +5,7 @@ TODO should this be a class?
 import re
 from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn import linear_model
+from sklearn import preprocessing
 import pandas as pd
 import numpy as np
 import pickle
@@ -164,7 +165,7 @@ def extract(df):
     # turn time string into number from [0,1) 
     # TODO janky
     # TODO use datetime?
-    time_feature = np.zeros((len(df),1)) # TODO this is setting NaNs to 0
+    time_feature = np.ones((len(df),1))*0.5
     idx = 0
     for index, row in df.iterrows():
         timeString = row.time
@@ -186,15 +187,15 @@ def extract(df):
     # TODO like make a list of merchants and if a new one is similar enough, change
     #      it to a pre-existing merchant
     # cut one: just do what sklearn tells us to do
-    vectorizer = HashingVectorizer(n_features=2**5)
+    vectorizer = HashingVectorizer(n_features=2**6)
     
     documents = df.merchant.tolist()
     wordCounts = vectorizer.fit_transform(documents)
     X = wordCounts.toarray()
     
     # combine
-    # TODO time helps a little, amount totally f's everything
     X = np.concatenate((amount_feature,time_feature,X),axis=1)
+    X = preprocessing.normalize(X, axis=0) # by feature
     
     return X
     
@@ -227,7 +228,8 @@ def run_cat(filename,modelname,fileout,new_run=True,run_parse=True):
     df = pd.read_csv(filename)
     
     if new_run:
-        model = linear_model.SGDClassifier(loss='log') # TODO hardcode
+        model = linear_model.SGDClassifier(loss='log',warm_start=True,
+                                           n_iter=100) # TODO hardcode
     else:
         modelFileLoad = open(modelname, 'rb')
         model = pickle.load(modelFileLoad)

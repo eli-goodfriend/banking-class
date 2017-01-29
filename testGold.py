@@ -1,10 +1,17 @@
 """
-test the model on a hand categorized gold standard
+train and test the model on a hand categorized gold standard
 """
 import transact as ts
 import pandas as pd
 import numpy as np
 import sklearn.metrics as metrics
+
+modelname = 'transaction_logreg'
+filein = '/home/eli/Data/Narmi/train_cat.csv'
+fileout = '/home/eli/Data/Narmi/train_cat.csv'
+
+# running the parser takes most of the time right now, so option to shut it off
+ts.run_cat(filein,modelname,fileout,new_run=True,run_parse=False)
 
 modelname = 'transaction_logreg'
 filein = '/home/eli/Data/Narmi/test.csv'
