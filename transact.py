@@ -155,23 +155,30 @@ def lookupTransactions(transData):
 # --- functions for extracting features for fitting ---
 def extract(df):
     """
-    extract features using sklearn vectorizer
+    extract features from merchant text using sklearn vectorizer
+                          times using own function
+                          amount data just as such
     input: df cleaned transaction dataframe
     output: X an array of features
     """
     # turn time string into number from [0,1) 
-    # TODO do this earlier and less jankily
+    # TODO janky
     # TODO use datetime?
-    # TODO not actually including this yet
-#    df['timenum'] = None
-#    for index, row in df.iterrows():
-#        timeString = row.time
-#        if isinstance(timeString, basestring): # a full time stamp
-#            hour = float(timeString[0:2])
-#            minute = float(timeString[3:5])
-#            second = float(timeString[6:8])
-#            timeFeat = hour/24. + minute/(24.*60.) + second/(24.*60.*60.)
-#            df.set_value(index,'timenum',timeFeat)
+    time_feature = np.zeros((len(df),1)) # TODO this is setting NaNs to 0
+    idx = 0
+    for index, row in df.iterrows():
+        timeString = row.time
+        if isinstance(timeString, basestring): # a full time stamp
+            hour = float(timeString[0:2])
+            minute = float(timeString[3:5])
+            second = float(timeString[6:8])
+            timeFeat = hour/24. + minute/(24.*60.) + second/(24.*60.*60.)
+            time_feature[idx,0] = timeFeat
+        idx+=1
+        
+    # turn amount column into an array
+    amount_feature = df.amount.values
+    amount_feature.shape = (len(amount_feature),1)
             
     # turn merchant strings into vectors
     # TODO from pre-categorized data or all data
@@ -179,13 +186,15 @@ def extract(df):
     # TODO like make a list of merchants and if a new one is similar enough, change
     #      it to a pre-existing merchant
     # cut one: just do what sklearn tells us to do
-    vectorizer = HashingVectorizer(n_features = 2 ** 5)
+    vectorizer = HashingVectorizer(n_features=2**5)
     
     documents = df.merchant.tolist()
     wordCounts = vectorizer.fit_transform(documents)
-    
-    # change everything to arrays and fit
     X = wordCounts.toarray()
+    
+    # combine
+    # TODO time helps a little, amount totally f's everything
+    X = np.concatenate((amount_feature,time_feature,X),axis=1)
     
     return X
     
@@ -199,12 +208,12 @@ def cat_df(df,model,locations,new_run,run_parse):
     uncatData = df[df.category < 0]
     print str(float(len(catData))/float(len(df)) * 100.) + "% of transactions categorized with lookup."
   
+    X = extract(catData) # uses hashing vectorizer
+    y = catData.category.tolist()
     if new_run:
-        X = extract(catData) # uses hashing vectorizer
-        y = catData.category.tolist()
         model.partial_fit(X,y,np.unique(y))
-    #else:
-    #    model.partial_fit(X,y)
+    else:
+        model.partial_fit(X,y)
 
     X = extract(uncatData) # uses hashing vectorizer
     uncat_pred = model.predict(X)

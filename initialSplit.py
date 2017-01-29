@@ -8,17 +8,14 @@ since I was given csv, I'm sticking with csv
 """
 import pandas as pd
 
-data_in = '/home/eli/Data/Narmi/transactions_anonymized.csv'
+data_in = '/home/eli/Data/Narmi/anonymized_transactions.csv'
 test_out = '/home/eli/Data/Narmi/test.csv'
 train_out = '/home/eli/Data/Narmi/train.csv'
 num_test = 400
 
 narmi_data = pd.read_csv(data_in)
 
-del narmi_data['Unnamed: 1']
-del narmi_data['Unnamed: 2']
-del narmi_data['Unnamed: 3']
-narmi_data.columns = ['raw']
+narmi_data.columns = ['raw','amount']
 
 narmi_data = narmi_data.sample(frac=1).reset_index(drop=True) # shuffle
 
