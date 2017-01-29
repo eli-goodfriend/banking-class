@@ -4,6 +4,10 @@ TODO should this be a class?
 """
 import re
 from sklearn.feature_extraction.text import HashingVectorizer
+from sklearn import linear_model
+import pandas as pd
+import numpy as np
+import pickle
 
 # --- functions for parsing the raw input ---
 def throwOut(df,col,regex):
@@ -68,6 +72,7 @@ def findLocations(df, state_data):
 
 def findMerchant(df):
     df['merchant'] = df['description']
+    df.merchant = df.merchant.str.upper() # unify representation for fitting
 
     # clean out known initial intermediary flags
     # TODO keep this in a separate column?
@@ -183,3 +188,61 @@ def extract(df):
     X = wordCounts.toarray()
     
     return X
+    
+# --- driver functions ---
+def cat_df(df,model,locations,new_run,run_parse):    
+    if run_parse: parseTransactions(df,'raw',locations)
+    
+    lookupTransactions(df)
+    
+    catData = df[df.category >= 0]
+    uncatData = df[df.category < 0]
+    print str(float(len(catData))/float(len(df)) * 100.) + "% of transactions categorized with lookup."
+  
+    if new_run:
+        X = extract(catData) # uses hashing vectorizer
+        y = catData.category.tolist()
+        model.partial_fit(X,y,np.unique(y))
+    #else:
+    #    model.partial_fit(X,y)
+
+    X = extract(uncatData) # uses hashing vectorizer
+    uncat_pred = model.predict(X)
+    uncatData.category = uncat_pred
+    df = pd.concat([catData, uncatData])
+    df.sort_index(inplace=True)
+    
+    return df
+
+def run_cat(filename,modelname,fileout,new_run=True,run_parse=True):
+    df = pd.read_csv(filename)
+    
+    if new_run:
+        model = linear_model.SGDClassifier(loss='log') # TODO hardcode
+    else:
+        modelFileLoad = open(modelname, 'rb')
+        model = pickle.load(modelFileLoad)
+    
+    fileCities = '/home/eli/Data/Narmi/cities_by_state.pickle' # TODO hardcode
+    us_cities = pd.read_pickle(fileCities)
+    
+    df = cat_df(df,model,us_cities,new_run,run_parse)
+    
+    df.to_csv(fileout)
+    
+    # Saving logistic regression model from training set 1
+    modelFileSave = open(modelname, 'wb')
+    pickle.dump(model, modelFileSave)
+    modelFileSave.close()
+
+    
+    
+    
+    
+    
+    
+    
+    
+
+
+
