@@ -122,16 +122,18 @@ def lookupTransactions(transData):
     input transData: dataframe containing cleaned transaction data, 
                      with a merchant column
     updates transData with a 'category' column, containing
-        NaN: unknown
+        NaN: not in lookup
         0: food
         1: transport
         2: retail
+        3: unknown and unknowable
         TODO standardize this from a file
     """
     # TODO janky
     foodMerchants = ['pizza','safeway','food','grocer','cafe','chipotle','mc[.]donalds','deli']
     transportMerchants = ['lyft','uber','greyhound']
     retailMerchants = ['target','walmart','amazon']
+    unknownMerchants = ['venmo']
     # next step healthMerchants = ['pharmacy','gym']
     # next step entertainmentMerchants = ['cinema','theater','theatre']
     
@@ -145,13 +147,18 @@ def lookupTransactions(transData):
     regex = '|'.join(retailMerchants)
     transData['isRetail'] = transData['merchant'].str.contains(regex,flags = re.IGNORECASE)
     
-    transData['isUnknown'] = ~(transData.isFood | transData.isTransport | transData.isRetail)
+    regex = '|'.join(unknownMerchants)
+    transData['isUnknown'] = transData['merchant'].str.contains(regex,flags = re.IGNORECASE)
+    
+    transData['isNotInLookup'] = ~(transData.isFood | transData.isTransport | \
+                                    transData.isRetail | transData.isUnknown)
     
     # TODO janky and not generalizable
     transData['category'] = None
-    transData['category'] = 1*transData.isFood + 2*transData.isTransport + 3*transData.isRetail - 1
+    transData['category'] = 1*transData.isFood + 2*transData.isTransport + \
+                            3*transData.isRetail + 4*transData.isUnknown - 1
     ll = transData.columns.get_loc('isFood')
-    ul = ll+4
+    ul = ll+5
     transData.drop(transData.columns[ll:ul], axis=1, inplace=True)
 
 # --- functions for extracting features for fitting ---
@@ -220,9 +227,9 @@ def cat_df(df,model,locations,new_run,run_parse,n_feat=2**6,cutoff=0.80):
     X = extract(uncatData,n_feat=n_feat) # uses hashing vectorizer
     probs = model.predict_proba(X) # TODO am I doing this the long way?
     
-    uncat_pred = np.argmax(probs,axis=1)
+    uncat_pred = np.argmax(probs,axis=1)    
     uncat_prob = np.amax(probs,axis=1)
-    uncat_pred[uncat_prob<cutoff] = -1 # TODO maybe should make unknown a legit category
+    uncat_pred[uncat_prob<cutoff] = 3 # unknown
     
     uncatData.category = uncat_pred
     df = pd.concat([catData, uncatData])
@@ -269,7 +276,7 @@ def run_test(train_in, train_out, test_in, test_out, modelname, run_parse=True,
     testData.loc[testData.truth=='food','truth'] = 0 # TODO messed this up
     testData.loc[testData.truth=='transportation','truth'] = 1
     testData.loc[testData.truth=='retail','truth'] = 2
-    testData.loc[testData.truth=='unknown','truth'] = -1
+    testData.loc[testData.truth=='unknown','truth'] = 3
     testData.truth = testData.truth.astype(np.int64)
     
     acc = metrics.accuracy_score(testData.truth, testData.category)
