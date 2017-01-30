@@ -217,7 +217,13 @@ def cat_df(df,model,locations,new_run,run_parse):
         model.partial_fit(X,y)
 
     X = extract(uncatData) # uses hashing vectorizer
-    uncat_pred = model.predict(X)
+    probs = model.predict_proba(X) # TODO am I doing this the long way?
+    
+    uncat_pred = np.argmax(probs,axis=1)
+    uncat_prob = np.amax(probs,axis=1)
+    cutoff = 0.80 # TODO hardcode
+    uncat_pred[uncat_prob<cutoff] = -1
+    
     uncatData.category = uncat_pred
     df = pd.concat([catData, uncatData])
     df.sort_index(inplace=True)
