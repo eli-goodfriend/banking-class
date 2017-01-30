@@ -6,6 +6,7 @@ import re
 from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn import linear_model
 from sklearn import preprocessing
+from sklearn import metrics
 import pandas as pd
 import numpy as np
 import pickle
@@ -154,7 +155,7 @@ def lookupTransactions(transData):
     transData.drop(transData.columns[ll:ul], axis=1, inplace=True)
 
 # --- functions for extracting features for fitting ---
-def extract(df):
+def extract(df,n_feat=2**6):
     """
     extract features from merchant text using sklearn vectorizer
                           times using own function
@@ -187,7 +188,7 @@ def extract(df):
     # TODO like make a list of merchants and if a new one is similar enough, change
     #      it to a pre-existing merchant
     # cut one: just do what sklearn tells us to do
-    vectorizer = HashingVectorizer(n_features=2**6)
+    vectorizer = HashingVectorizer(n_features=n_feat)
     
     documents = df.merchant.tolist()
     wordCounts = vectorizer.fit_transform(documents)
@@ -200,7 +201,7 @@ def extract(df):
     return X
     
 # --- driver functions ---
-def cat_df(df,model,locations,new_run,run_parse):    
+def cat_df(df,model,locations,new_run,run_parse,n_feat=2**6,cutoff=0.80):    
     if run_parse: parseTransactions(df,'raw',locations)
     
     lookupTransactions(df)
@@ -209,20 +210,19 @@ def cat_df(df,model,locations,new_run,run_parse):
     uncatData = df[df.category < 0]
     print str(float(len(catData))/float(len(df)) * 100.) + "% of transactions categorized with lookup."
   
-    X = extract(catData) # uses hashing vectorizer
+    X = extract(catData,n_feat=n_feat) # uses hashing vectorizer
     y = catData.category.tolist()
     if new_run:
         model.partial_fit(X,y,np.unique(y))
     else:
         model.partial_fit(X,y)
 
-    X = extract(uncatData) # uses hashing vectorizer
+    X = extract(uncatData,n_feat=n_feat) # uses hashing vectorizer
     probs = model.predict_proba(X) # TODO am I doing this the long way?
     
     uncat_pred = np.argmax(probs,axis=1)
     uncat_prob = np.amax(probs,axis=1)
-    cutoff = 0.80 # TODO hardcode
-    uncat_pred[uncat_prob<cutoff] = -1
+    uncat_pred[uncat_prob<cutoff] = -1 # TODO maybe should make unknown a legit category
     
     uncatData.category = uncat_pred
     df = pd.concat([catData, uncatData])
@@ -230,12 +230,14 @@ def cat_df(df,model,locations,new_run,run_parse):
     
     return df
 
-def run_cat(filename,modelname,fileout,new_run=True,run_parse=True):
+def run_cat(filename,modelname,fileout,new_run=True,run_parse=True,
+            alpha=0.0001, cutoff=0.80, n_feat=2**6, n_iter=100):
     df = pd.read_csv(filename)
     
     if new_run:
         model = linear_model.SGDClassifier(loss='log',warm_start=True,
-                                           n_iter=100) # TODO hardcode
+                                           n_iter=n_iter,alpha=alpha,
+                                           random_state=42) # TODO debug only for seed
     else:
         modelFileLoad = open(modelname, 'rb')
         model = pickle.load(modelFileLoad)
@@ -243,7 +245,7 @@ def run_cat(filename,modelname,fileout,new_run=True,run_parse=True):
     fileCities = '/home/eli/Data/Narmi/cities_by_state.pickle' # TODO hardcode
     us_cities = pd.read_pickle(fileCities)
     
-    df = cat_df(df,model,us_cities,new_run,run_parse)
+    df = cat_df(df,model,us_cities,new_run,run_parse,n_feat=n_feat,cutoff=cutoff)
     
     df.to_csv(fileout)
     
@@ -253,7 +255,27 @@ def run_cat(filename,modelname,fileout,new_run=True,run_parse=True):
     modelFileSave.close()
 
     
+# ------ testing functions
+def run_test(train_in, train_out, test_in, test_out, modelname, run_parse=True,
+             alpha=0.0001, cutoff=0.80, n_feat=2**6, n_iter=100):    
+    # running the parser takes most of the time right now, so option to shut it off
+    run_cat(train_in,modelname,train_out,new_run=True,run_parse=run_parse,
+            alpha=alpha, cutoff=cutoff, n_feat=n_feat, n_iter=n_iter)
     
+    run_cat(test_in,modelname,test_out,new_run=False,
+            alpha=alpha, cutoff=cutoff, n_feat=n_feat, n_iter=n_iter)
+    
+    testData = pd.read_csv(test_out)
+    testData.loc[testData.truth=='food','truth'] = 0 # TODO messed this up
+    testData.loc[testData.truth=='transportation','truth'] = 1
+    testData.loc[testData.truth=='retail','truth'] = 2
+    testData.loc[testData.truth=='unknown','truth'] = -1
+    testData.truth = testData.truth.astype(np.int64)
+    
+    acc = metrics.accuracy_score(testData.truth, testData.category)
+    print "Overall accuracy is " + str(acc*100.) + "%"
+    
+    return acc
     
     
     

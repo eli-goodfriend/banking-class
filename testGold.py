@@ -2,36 +2,66 @@
 train and test the model on a hand categorized gold standard
 """
 import transact as ts
-import pandas as pd
 import numpy as np
-import sklearn.metrics as metrics
+import matplotlib.pyplot as plt
 
 modelname = 'transaction_logreg'
-filein = '/home/eli/Data/Narmi/train_cat.csv'
-fileout = '/home/eli/Data/Narmi/train_cat.csv'
+train_in = '/home/eli/Data/Narmi/train_cat.csv'
+train_out = '/home/eli/Data/Narmi/train_cat.csv'
+test_in = '/home/eli/Data/Narmi/test.csv'
+test_out = '/home/eli/Data/Narmi/test_cat.csv'
 
-# running the parser takes most of the time right now, so option to shut it off
-ts.run_cat(filein,modelname,fileout,new_run=True,run_parse=False)
+# our best middle of the road
+# TODO this should be with a separate test set, with the parameter selection
+#      runs using a cv set
+# seed = 42
+# best accuracy = 65.5%
+acc = ts.run_test(train_in, train_out, test_in, test_out, modelname, run_parse=False,
+            alpha=0.00001, cutoff=0.70, n_feat=2**5, n_iter=5)
 
-modelname = 'transaction_logreg'
-filein = '/home/eli/Data/Narmi/test.csv'
-fileout = '/home/eli/Data/Narmi/test_cat.csv'
+alphas = [0.01, 0.001, 0.0001, 0.00001, 0.000001]
+cutoffs = [0.5, 0.6, 0.7, 0.8, 0.9]
+n_feats = [2**4, 2**5, 2**6, 2**7]
+n_iters = [5, 10, 50, 100]
 
-ts.run_cat(filein,modelname,fileout,new_run=False)
+# effect of alpha
+acc = np.empty(len(alphas))
+idx = 0
+for alpha in alphas:
+    acc[idx] = ts.run_test(train_in, train_out, test_in, test_out, modelname, run_parse=False,
+                           alpha=alpha, cutoff=0.70, n_feat=2**5, n_iter=5)
+    idx+=1
+plt.plot(alphas,acc,'ro')
+plt.show()
 
-testData = pd.read_csv(fileout)
-testData.loc[testData.truth=='food','truth'] = 0 # TODO messed this up
-testData.loc[testData.truth=='transportation','truth'] = 1
-testData.loc[testData.truth=='retail','truth'] = 2
-testData.loc[testData.truth=='unknown','truth'] = -1
-testData.truth = testData.truth.astype(np.int64)
+# effect of cutoff
+acc = np.empty(len(cutoffs))
+idx = 0
+for cutoff in cutoffs:
+    acc[idx] = ts.run_test(train_in, train_out, test_in, test_out, modelname, run_parse=False,
+                           alpha=0.00001, cutoff=cutoff, n_feat=2**5, n_iter=5)
+    idx+=1
+plt.plot(cutoffs,acc,'ro')
+plt.show()
 
-acc = metrics.accuracy_score(testData.truth, testData.category)
-print "Overall accuracy is " + str(acc*100.) + "%"
+# effect of n_feat
+acc = np.empty(len(n_feats))
+idx = 0
+for n_feat in n_feats:
+    acc[idx] = ts.run_test(train_in, train_out, test_in, test_out, modelname, run_parse=False,
+                           alpha=0.00001, cutoff=0.70, n_feat=n_feat, n_iter=5)
+    idx+=1
+plt.plot(n_feats,acc,'ro')
+plt.show()
 
-
-
-
-
+# effect of n_iter
+acc = np.empty(len(n_iters))
+idx = 0
+for n_iter in n_iters:
+    acc[idx] = ts.run_test(train_in, train_out, test_in, test_out, modelname, run_parse=False,
+                           alpha=0.00001, cutoff=0.70, n_feat=2**5, n_iter=n_iter)
+    idx+=1
+plt.plot(n_iters,acc,'ro')
+plt.show()
 
 
