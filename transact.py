@@ -5,6 +5,7 @@ TODO should this be a class?
 import re
 from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn import linear_model
+from sklearn import naive_bayes
 from sklearn import preprocessing
 from sklearn import metrics
 import pandas as pd
@@ -162,7 +163,7 @@ def lookupTransactions(transData):
     transData.drop(transData.columns[ll:ul], axis=1, inplace=True)
 
 # --- functions for extracting features for fitting ---
-def extract(df,n_feat=2**6):
+def extract(df,n_feat=2**6,model_type='logreg'):
     """
     extract features from merchant text using sklearn vectorizer
                           times using own function
@@ -203,12 +204,17 @@ def extract(df,n_feat=2**6):
     
     # combine
     X = np.concatenate((amount_feature,time_feature,X),axis=1)
-    X = preprocessing.normalize(X, axis=0) # by feature
+    
+    if (model_type=='logreg') or (model_type=='passive-aggressive'):
+        X = preprocessing.normalize(X, axis=0) # by feature
+    elif model_type=='naive-bayes':
+        X = abs(X)
     
     return X
     
 # --- driver functions ---
-def cat_df(df,model,locations,new_run,run_parse,n_feat=2**6,cutoff=0.80):    
+def cat_df(df,model,locations,new_run,run_parse,n_feat=2**6,cutoff=0.80,
+           model_type='logreg'):    
     if run_parse: parseTransactions(df,'raw',locations)
     
     lookupTransactions(df)
@@ -217,19 +223,21 @@ def cat_df(df,model,locations,new_run,run_parse,n_feat=2**6,cutoff=0.80):
     uncatData = df[df.category < 0]
     print str(float(len(catData))/float(len(df)) * 100.) + "% of transactions categorized with lookup."
   
-    X = extract(catData,n_feat=n_feat) # uses hashing vectorizer
+    X = extract(catData,n_feat=n_feat,model_type=model_type) 
     y = catData.category.tolist()
     if new_run:
         model.partial_fit(X,y,np.unique(y))
     else:
         model.partial_fit(X,y)
 
-    X = extract(uncatData,n_feat=n_feat) # uses hashing vectorizer
-    probs = model.predict_proba(X) # TODO am I doing this the long way?
-    
-    uncat_pred = np.argmax(probs,axis=1)    
-    uncat_prob = np.amax(probs,axis=1)
-    uncat_pred[uncat_prob<cutoff] = 3 # unknown
+    X = extract(uncatData,n_feat=n_feat,model_type=model_type)
+    if (model_type=='logreg') or (model_type=='naive-bayes'):
+        probs = model.predict_proba(X) # TODO am I doing this the long way?  
+        uncat_pred = np.argmax(probs,axis=1)    
+        uncat_prob = np.amax(probs,axis=1)
+        uncat_pred[uncat_prob<cutoff] = 3 # unknown
+    else:
+        uncat_pred = model.predict(X)
     
     uncatData.category = uncat_pred
     df = pd.concat([catData, uncatData])
@@ -238,13 +246,22 @@ def cat_df(df,model,locations,new_run,run_parse,n_feat=2**6,cutoff=0.80):
     return df
 
 def run_cat(filename,modelname,fileout,new_run=True,run_parse=True,
+            model_type='logreg',C=1.0,
             alpha=0.0001, cutoff=0.80, n_feat=2**6, n_iter=100):
     df = pd.read_csv(filename)
     
     if new_run:
-        model = linear_model.SGDClassifier(loss='log',warm_start=True,
+        if model_type=='logreg':
+            model = linear_model.SGDClassifier(loss='log',warm_start=True,
                                            n_iter=n_iter,alpha=alpha,
                                            random_state=42) # TODO debug only for seed
+        elif model_type=='passive-aggressive':
+            model = linear_model.PassiveAggressiveClassifier(C=C,warm_start=True,
+                                                             random_state=42)
+        elif model_type=='naive-bayes':
+            model = naive_bayes.MultinomialNB(alpha=alpha)
+        else:
+            raise NameError('model_type must be logreg, passive-aggressive, or naive-bayes')
     else:
         modelFileLoad = open(modelname, 'rb')
         model = pickle.load(modelFileLoad)
@@ -252,7 +269,8 @@ def run_cat(filename,modelname,fileout,new_run=True,run_parse=True,
     fileCities = '/home/eli/Data/Narmi/cities_by_state.pickle' # TODO hardcode
     us_cities = pd.read_pickle(fileCities)
     
-    df = cat_df(df,model,us_cities,new_run,run_parse,n_feat=n_feat,cutoff=cutoff)
+    df = cat_df(df,model,us_cities,new_run,run_parse,n_feat=n_feat,cutoff=cutoff,
+                model_type=model_type)
     
     df.to_csv(fileout)
     
@@ -264,16 +282,19 @@ def run_cat(filename,modelname,fileout,new_run=True,run_parse=True,
     
 # ------ testing functions
 def run_test(train_in, train_out, test_in, test_out, modelname, run_parse=True,
+             model_type='logreg',C=1.0,
              alpha=0.0001, cutoff=0.80, n_feat=2**6, n_iter=100):    
     # running the parser takes most of the time right now, so option to shut it off
     run_cat(train_in,modelname,train_out,new_run=True,run_parse=run_parse,
+            model_type=model_type,C=C,
             alpha=alpha, cutoff=cutoff, n_feat=n_feat, n_iter=n_iter)
     
     run_cat(test_in,modelname,test_out,new_run=False,
+            model_type=model_type,C=C,
             alpha=alpha, cutoff=cutoff, n_feat=n_feat, n_iter=n_iter)
     
     testData = pd.read_csv(test_out)
-    testData.loc[testData.truth=='food','truth'] = 0 # TODO messed this up
+    testData.loc[testData.truth=='food','truth'] = 0 # TODO hardcode
     testData.loc[testData.truth=='transportation','truth'] = 1
     testData.loc[testData.truth=='retail','truth'] = 2
     testData.loc[testData.truth=='unknown','truth'] = 3
@@ -283,6 +304,7 @@ def run_test(train_in, train_out, test_in, test_out, modelname, run_parse=True,
     print "Overall accuracy is " + str(acc*100.) + "%"
     
     return acc
+    #TODO why does the train_cat end up with so many columns?
     
     
     
