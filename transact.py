@@ -8,9 +8,12 @@ from sklearn import linear_model
 from sklearn import naive_bayes
 from sklearn import preprocessing
 from sklearn import metrics
+from nltk import tokenize
 import pandas as pd
 import numpy as np
-import pickle
+import scipy.spatial.distance as scipy_dist
+import cPickle as pickle
+import gensim
 
 # --- functions for parsing the raw input ---
 def throwOut(df,col,regex):
@@ -161,6 +164,36 @@ def lookupTransactions(transData):
     ll = transData.columns.get_loc('isFood')
     ul = ll+5
     transData.drop(transData.columns[ll:ul], axis=1, inplace=True)
+    
+def try_word2vec_cat(df,embeddings):
+    print "using word2vec to categorize data..."
+    df['category'] = None
+    
+    cats_file = 'cats.txt' # TODO hardcode
+    cats = pd.read_csv(cats_file,squeeze=True,header=None)
+    
+    print "looping over lots of for loops"
+    # TODO this is janky af
+    merchants = df.merchant.tolist()
+    categories = [None]*len(merchants)
+    for idx, merchant in enumerate(merchants):
+        words = tokenize.word_tokenize(merchant)
+        words = [word.lower() for word in words]
+        max_sim = 0.5
+        for word in words:
+            for cat in cats:
+                try:
+                    wordvec = embeddings[word]
+                    catvec = embeddings[cat]
+                    sim = scipy_dist.cosine(wordvec,catvec)
+                    if sim > max_sim:
+                        max_sim = sim
+                        categories[idx] = cat
+                except:
+                    pass
+    df.category = categories
+                    
+    
 
 # --- functions for extracting features for fitting ---
 def extract(df,n_feat=2**6,model_type='logreg'):
@@ -213,22 +246,22 @@ def extract(df,n_feat=2**6,model_type='logreg'):
     return X
     
 # --- driver functions ---
-def cat_df(df,model,locations,new_run,run_parse,n_feat=2**6,cutoff=0.80,
+def cat_df(df,model,locations,embeddings,new_run,run_parse,n_feat=2**6,cutoff=0.80,
            model_type='logreg'):    
     if run_parse: parseTransactions(df,'raw',locations)
     
-    lookupTransactions(df)
+    try_word2vec_cat(df,embeddings)
     
+    
+    #print "categorizing the rest with logreg..."
     catData = df[df.category >= 0]
     uncatData = df[df.category < 0]
     print str(float(len(catData))/float(len(df)) * 100.) + "% of transactions categorized with lookup."
   
+    """
     X = extract(catData,n_feat=n_feat,model_type=model_type) 
     y = catData.category.tolist()
-    if new_run:
-        model.partial_fit(X,y,np.unique(y))
-    else:
-        model.partial_fit(X,y)
+    model.partial_fit(X,y,np.unique(y)) # TODO can it learn new categories?
 
     X = extract(uncatData,n_feat=n_feat,model_type=model_type)
     if (model_type=='logreg') or (model_type=='naive-bayes'):
@@ -242,10 +275,11 @@ def cat_df(df,model,locations,new_run,run_parse,n_feat=2**6,cutoff=0.80,
     uncatData.category = uncat_pred
     df = pd.concat([catData, uncatData])
     df.sort_index(inplace=True)
+    """
     
     return df
 
-def run_cat(filename,modelname,fileout,new_run=True,run_parse=True,
+def run_cat(filename,modelname,fileout,embeddings,new_run=True,run_parse=True,
             model_type='logreg',C=1.0,
             alpha=0.0001, cutoff=0.80, n_feat=2**6, n_iter=100):
     df = pd.read_csv(filename)
@@ -269,7 +303,7 @@ def run_cat(filename,modelname,fileout,new_run=True,run_parse=True,
     fileCities = '/home/eli/Data/Narmi/cities_by_state.pickle' # TODO hardcode
     us_cities = pd.read_pickle(fileCities)
     
-    df = cat_df(df,model,us_cities,new_run,run_parse,n_feat=n_feat,cutoff=cutoff,
+    df = cat_df(df,model,us_cities,embeddings,new_run,run_parse,n_feat=n_feat,cutoff=cutoff,
                 model_type=model_type)
     
     df.to_csv(fileout)
@@ -281,25 +315,19 @@ def run_cat(filename,modelname,fileout,new_run=True,run_parse=True,
 
     
 # ------ testing functions
-def run_test(train_in, train_out, test_in, test_out, modelname, run_parse=True,
+def run_test(train_in, train_out, test_in, test_out, modelname, embeddings, run_parse=True,
              model_type='logreg',C=1.0,
              alpha=0.0001, cutoff=0.80, n_feat=2**6, n_iter=100):    
     # running the parser takes most of the time right now, so option to shut it off
-    run_cat(train_in,modelname,train_out,new_run=True,run_parse=run_parse,
+    run_cat(train_in,modelname,train_out,embeddings,new_run=True,run_parse=run_parse,
             model_type=model_type,C=C,
             alpha=alpha, cutoff=cutoff, n_feat=n_feat, n_iter=n_iter)
     
-    run_cat(test_in,modelname,test_out,new_run=False,
+    run_cat(test_in,modelname,test_out,embeddings,new_run=False,
             model_type=model_type,C=C,
             alpha=alpha, cutoff=cutoff, n_feat=n_feat, n_iter=n_iter)
     
     testData = pd.read_csv(test_out)
-    testData.loc[testData.truth=='food','truth'] = 0 # TODO hardcode
-    testData.loc[testData.truth=='transportation','truth'] = 1
-    testData.loc[testData.truth=='retail','truth'] = 2
-    testData.loc[testData.truth=='unknown','truth'] = 3
-    testData.truth = testData.truth.astype(np.int64)
-    
     acc = metrics.accuracy_score(testData.truth, testData.category)
     print "Overall accuracy is " + str(acc*100.) + "%"
     

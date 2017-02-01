@@ -1,0 +1,6 @@
+food
+coffee
+transportation
+shopping
+bills
+health
