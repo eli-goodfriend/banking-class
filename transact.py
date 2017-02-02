@@ -83,7 +83,7 @@ def findMerchant(df):
     # clean out known initial intermediary flags
     # TODO keep this in a separate column?
     # TODO get a list of these from somewhere?
-    third_parties = ['SQ \*','LEVELUP\*','PAYPAL \*','SQC\*']
+    third_parties = ['...\*','LEVELUP\*','PAYPAL \*']
     regex = '^(' + '|'.join(third_parties) + ')'
     throwOut(df,'merchant',regex)
     
@@ -93,11 +93,14 @@ def findMerchant(df):
     
     # clean out the chunks of Xs that come from redacting ID numbers
     throwOut(df,'merchant','X+-?X+')
+    
+    # clean out the leftover payment IDs
+    throwOut(df,'merchant','( ID:.*| PAYMENT ID:.*| PMT ID:.*)')
     strip(df,'merchant')
     
     # clean out strings that look like franchise numbers
     # TODO this is not correct: too broad
-    throwOut(df,'merchant','[#]?([0-9]){3,999}$')
+    throwOut(df,'merchant','[#]?[ ]?([0-9]){1,999}$')
     strip(df,'merchant')
     
 def parseTransactions(df,col,cities):
