@@ -29,12 +29,12 @@ catData = df[~df.category.isnull()]
 uncatData = df[df.category.isnull()]
 print str(float(len(catData))/float(len(df)) * 100.) + "% of transactions categorized with lookup."
 
-ts.train_model(catData,model,embeddings,model_type='logreg')
+ts.train_model(catData,model,embeddings,model_type='logreg',new_run=True)
 ts.use_model(uncatData,model,embeddings,0.0,model_type='logreg')
 
 df = pd.concat([catData, uncatData])
 df.sort_index(inplace=True)
 
-df.to_csv(fileout)
+df.to_csv(fileout,index=False)
 
 

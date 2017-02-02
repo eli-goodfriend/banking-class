@@ -16,4 +16,4 @@ fileCities = '/home/eli/Data/Narmi/cities_by_state.pickle' # TODO hardcode
 us_cities = pd.read_pickle(fileCities)
 
 ts.parseTransactions(df,'raw',us_cities)
-df.to_csv(fileout)
+df.to_csv(fileout,index=False)

@@ -15,6 +15,31 @@ import scipy.spatial.distance as scipy_dist
 import cPickle as pickle
 import gensim
 
+# --- general utility functions
+def cat_to_int(df):
+    cats_file = 'cats.txt' # TODO hardcode
+    cats = pd.read_csv(cats_file,squeeze=True,header=None)
+    
+    df.cat_int = None
+    for i, row in df.iterrows():
+        category = row.category
+        for ii, rowrow in cats.iteritems():
+            if category == rowrow:
+                df.set_value(i,'cat_int',ii)
+                break
+            
+def int_to_cat(df):
+    cats_file = 'cats.txt' # TODO hardcode
+    cats = pd.read_csv(cats_file,squeeze=True,header=None)
+    
+    df.category = None
+    for i, row in df.iterrows():
+        cat_int = row.cat_int
+        for ii, rowrow in cats.iteritems():
+            if cat_int == ii:
+                df.set_value(i,'category',rowrow)
+                break
+    
 # --- functions for parsing the raw input ---
 def throwOut(df,col,regex):
     df[col] = df[col].str.replace(regex,'',case = False,flags = re.IGNORECASE)
@@ -103,6 +128,21 @@ def findMerchant(df):
     throwOut(df,'merchant','[#]?[ ]?([0-9]){1,999}$')
     strip(df,'merchant')
     
+    # clean out strings that aren't helping
+    throwOut(df,'merchant','([ ]?-[ ]?|[_])')
+    strip(df,'merchant')
+    
+    # clean out anything .com
+    throwOut(df,'merchant','[.]com.*$')
+    strip(df,'merchant')
+    
+    # clean out final single characters that also aren't helping
+    throwOut(df,'merchant',' .$')
+    strip(df,'merchant')
+    
+    # finally, if this leaves an empty merchant string, fill it with a blank space
+    df.merchant = df.merchant.str.replace('^$',' ')
+    
 def parseTransactions(df,col,cities):
     """
     parseTransactions regex parser
@@ -123,94 +163,26 @@ def parseTransactions(df,col,cities):
     findMerchant(df) # extract merchant from transaction description
     
 # --- functions for looking up known merchants ---
-def lookupTransactions(transData):
+def lookupTransactions(df,common_merchants):
     """
     categorize transactions for major retailers from a lookup table
-    input transData: dataframe containing cleaned transaction data, 
-                     with a merchant column
-    updates transData with a 'category' column, containing
-        NaN: not in lookup
-        0: food
-        1: transport
-        2: retail
-        3: unknown and unknowable
-        TODO standardize this from a file
     """
-    # TODO janky
-    foodMerchants = ['pizza','safeway','food','grocer','cafe','chipotle','mc[.]donalds','deli']
-    transportMerchants = ['lyft','uber','greyhound']
-    retailMerchants = ['target','walmart','amazon']
-    unknownMerchants = ['venmo']
-    # next step healthMerchants = ['pharmacy','gym']
-    # next step entertainmentMerchants = ['cinema','theater','theatre']
-    
-    # TODO this is also janky
-    regex = '|'.join(foodMerchants)
-    transData['isFood'] = transData['merchant'].str.contains(regex,flags = re.IGNORECASE)
-    
-    regex = '|'.join(transportMerchants)
-    transData['isTransport'] = transData['merchant'].str.contains(regex,flags = re.IGNORECASE)
-    
-    regex = '|'.join(retailMerchants)
-    transData['isRetail'] = transData['merchant'].str.contains(regex,flags = re.IGNORECASE)
-    
-    regex = '|'.join(unknownMerchants)
-    transData['isUnknown'] = transData['merchant'].str.contains(regex,flags = re.IGNORECASE)
-    
-    transData['isNotInLookup'] = ~(transData.isFood | transData.isTransport | \
-                                    transData.isRetail | transData.isUnknown)
-    
-    # TODO janky and not generalizable
-    transData['category'] = None
-    transData['category'] = 1*transData.isFood + 2*transData.isTransport + \
-                            3*transData.isRetail + 4*transData.isUnknown - 1
-    ll = transData.columns.get_loc('isFood')
-    ul = ll+5
-    transData.drop(transData.columns[ll:ul], axis=1, inplace=True)
-    
-def try_word2vec_cat(df,embeddings):
-    print "using word2vec to categorize data..."
     df['category'] = None
     
-    cats_file = 'cats.txt' # TODO hardcode
-    cats = pd.read_csv(cats_file,squeeze=True,header=None)
+    for i, row in df.iterrows():
+        merchant = row.merchant
+        for ii, rowrow in common_merchants.iterrows():
+            if merchant == rowrow.merchant:
+                df.set_value(i,'category',rowrow.category)
+                break
+            
+    df['cat_int'] = None
+    cat_to_int(df)
     
-    print "looping over lots of for loops"
-    # TODO this is janky af
-    merchants = df.merchant.tolist()
-    categories = [None]*len(merchants)
-    for idx, merchant in enumerate(merchants):
-        words = tokenize.word_tokenize(merchant)
-        words = [word.lower() for word in words]
-        max_sim = 0.5
-        for word in words:
-            for cat in cats:
-                try:
-                    wordvec = embeddings[word]
-                    catvec = embeddings[cat]
-                    sim = scipy_dist.cosine(wordvec,catvec)
-                    if sim > max_sim:
-                        max_sim = sim
-                        categories[idx] = cat
-                except:
-                    pass
-    df.category = categories
-                    
-    
-
 # --- functions for extracting features for fitting ---
-def extract(df,n_feat=2**6,model_type='logreg'):
-    """
-    extract features from merchant text using sklearn vectorizer
-                          times using own function
-                          amount data just as such
-    input: df cleaned transaction dataframe
-    output: X an array of features
-    """
+def make_time_feature(df):
     # turn time string into number from [0,1) 
-    # TODO janky
-    # TODO use datetime?
-    time_feature = np.ones((len(df),1))*0.5
+    time_feature = np.ones((len(df),1))*0.5 # NaNs become 0.5
     idx = 0
     for index, row in df.iterrows():
         timeString = row.time
@@ -222,69 +194,99 @@ def extract(df,n_feat=2**6,model_type='logreg'):
             time_feature[idx,0] = timeFeat
         idx+=1
         
+    return time_feature
+    
+def make_amount_feature(df):
     # turn amount column into an array
     amount_feature = df.amount.values
     amount_feature.shape = (len(amount_feature),1)
-            
-    # turn merchant strings into vectors
-    # TODO from pre-categorized data or all data
-    # TODO what about fuzzy matches: do that now or when defining merchants
-    # TODO like make a list of merchants and if a new one is similar enough, change
-    #      it to a pre-existing merchant
-    # cut one: just do what sklearn tells us to do
-    vectorizer = HashingVectorizer(n_features=n_feat)
     
-    documents = df.merchant.tolist()
-    wordCounts = vectorizer.fit_transform(documents)
-    X = wordCounts.toarray()
+    return amount_feature
     
-    # combine
+def make_word_feature(df,embeddings):
+    # use embeddings to vectorize merchant description
+    # TODO first cut is averaging words in description
+    #      but that might not work
+    merchants = df.merchant.tolist()
+    veclen = len(embeddings['food'])
+    word_feature = np.zeros((len(merchants),veclen))
+    for idx, merchant in enumerate(merchants):
+        num_known = 0
+        try:
+            words = tokenize.word_tokenize(merchant)
+            words = [word.lower() for word in words]
+            for word in words:
+                wordvec = embeddings[word]
+                word_feature[idx,:] += wordvec
+                num_known += 1
+        except:
+            pass
+        word_feature[idx,:] = word_feature[idx,:] / float(max(num_known,1))
+        
+    return word_feature
+
+def extract(df,embeddings,model_type='logreg'):
+    time_feature = make_time_feature(df)
+    amount_feature = make_amount_feature(df)
+    X = make_word_feature(df,embeddings)
+    
     X = np.concatenate((amount_feature,time_feature,X),axis=1)
     
     if (model_type=='logreg') or (model_type=='passive-aggressive'):
-        X = preprocessing.normalize(X, axis=0) # by feature
+        X = preprocessing.normalize(X)
     elif model_type=='naive-bayes':
         X = abs(X)
     
     return X
-    
-# --- driver functions ---
-def cat_df(df,model,locations,embeddings,new_run,run_parse,n_feat=2**6,cutoff=0.80,
-           model_type='logreg'):    
-    if run_parse: parseTransactions(df,'raw',locations)
-    
-    try_word2vec_cat(df,embeddings)
-    
-    
-    #print "categorizing the rest with logreg..."
-    catData = df[df.category >= 0]
-    uncatData = df[df.category < 0]
-    print str(float(len(catData))/float(len(df)) * 100.) + "% of transactions categorized with lookup."
-  
-    """
-    X = extract(catData,n_feat=n_feat,model_type=model_type) 
-    y = catData.category.tolist()
-    model.partial_fit(X,y,np.unique(y)) # TODO can it learn new categories?
 
-    X = extract(uncatData,n_feat=n_feat,model_type=model_type)
+def train_model(catData,model,embeddings,model_type='logreg',new_run=False):    
+    X = extract(catData,embeddings,model_type=model_type) 
+    y = catData.cat_int.tolist()
+    if new_run:
+        model.partial_fit(X,y,np.unique(y))
+    else:
+        model.partial_fit(X,y)
+
+def use_model(uncatData,model,embeddings,cutoff,model_type='logreg'):
+    X = extract(uncatData,embeddings,model_type=model_type)
     if (model_type=='logreg') or (model_type=='naive-bayes'):
-        probs = model.predict_proba(X) # TODO am I doing this the long way?  
+        probs = model.predict_proba(X) # TODO am I doing this the long way? 
         uncat_pred = np.argmax(probs,axis=1)    
         uncat_prob = np.amax(probs,axis=1)
-        uncat_pred[uncat_prob<cutoff] = 3 # unknown
+        uncat_pred[uncat_prob<cutoff] = 3 # TODO
     else:
         uncat_pred = model.predict(X)
     
-    uncatData.category = uncat_pred
+    uncatData.cat_int = uncat_pred
+    
+# --- driver functions ---
+def cat_df(df,model,locations,embeddings,new_run,run_parse,cutoff=0.80,
+           model_type='logreg'):    
+    if run_parse: parseTransactions(df,'raw',locations)
+    
+    print "pre-categorizing 100 most common merchants"
+    common_merchants = pd.read_csv('lookup_table.csv') # TODO
+    lookupTransactions(df,common_merchants)
+    
+    catData = df[~df.category.isnull()]
+    uncatData = df[df.category.isnull()]
+    print str(float(len(catData))/float(len(df)) * 100.) + "% of transactions categorized with lookup."
+    
+    print "training model on known merchants"
+    train_model(catData,model,embeddings,model_type=model_type,new_run=new_run)
+    print "predicting remaining transactions using model"
+    use_model(uncatData,model,embeddings,cutoff,model_type=model_type)
+
     df = pd.concat([catData, uncatData])
     df.sort_index(inplace=True)
-    """
+    
+    int_to_cat(df)
     
     return df
 
 def run_cat(filename,modelname,fileout,embeddings,new_run=True,run_parse=True,
             model_type='logreg',C=1.0,
-            alpha=0.0001, cutoff=0.80, n_feat=2**6, n_iter=100):
+            alpha=0.0001, cutoff=0.80, n_iter=100):
     df = pd.read_csv(filename)
     
     if new_run:
@@ -306,10 +308,10 @@ def run_cat(filename,modelname,fileout,embeddings,new_run=True,run_parse=True,
     fileCities = '/home/eli/Data/Narmi/cities_by_state.pickle' # TODO hardcode
     us_cities = pd.read_pickle(fileCities)
     
-    df = cat_df(df,model,us_cities,embeddings,new_run,run_parse,n_feat=n_feat,cutoff=cutoff,
+    df = cat_df(df,model,us_cities,embeddings,new_run,run_parse,cutoff=cutoff,
                 model_type=model_type)
     
-    df.to_csv(fileout)
+    df.to_csv(fileout,index=False)
     
     # Saving logistic regression model from training set 1
     modelFileSave = open(modelname, 'wb')
@@ -320,15 +322,15 @@ def run_cat(filename,modelname,fileout,embeddings,new_run=True,run_parse=True,
 # ------ testing functions
 def run_test(train_in, train_out, test_in, test_out, modelname, embeddings, run_parse=True,
              model_type='logreg',C=1.0,
-             alpha=0.0001, cutoff=0.80, n_feat=2**6, n_iter=100):    
+             alpha=0.0001, cutoff=0.80, n_iter=100):    
     # running the parser takes most of the time right now, so option to shut it off
     run_cat(train_in,modelname,train_out,embeddings,new_run=True,run_parse=run_parse,
             model_type=model_type,C=C,
-            alpha=alpha, cutoff=cutoff, n_feat=n_feat, n_iter=n_iter)
+            alpha=alpha, cutoff=cutoff, n_iter=n_iter)
     
     run_cat(test_in,modelname,test_out,embeddings,new_run=False,
             model_type=model_type,C=C,
-            alpha=alpha, cutoff=cutoff, n_feat=n_feat, n_iter=n_iter)
+            alpha=alpha, cutoff=cutoff, n_iter=n_iter)
     
     testData = pd.read_csv(test_out)
     acc = metrics.accuracy_score(testData.truth, testData.category)

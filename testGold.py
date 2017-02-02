@@ -22,26 +22,15 @@ except:
     embeddingFileLoad = open(embedding_name, 'rb')
     embeddings = pickle.load(embeddingFileLoad)
 
-"""
-import pandas as pd
-df = pd.read_csv(cv_in)
-modelFileLoad = open(modelname, 'rb')
-model = pickle.load(modelFileLoad)
-fileCities = '/home/eli/Data/Narmi/cities_by_state.pickle' # TODO hardcode
-us_cities = pd.read_pickle(fileCities)
-
-ts.parseTransactions(df,'raw',us_cities)
-    
-ts.try_word2vec_cat(df)
-"""
-
 # our best middle of the road
 # TODO this should be with a separate test set, with the parameter selection
 #      runs using a cv set
 # seed = 42, very dependent on seed
-# best accuracy = 69.25% with unknown and unknowable as separate category
+# best accuracy = 73%
 acc = ts.run_test(train_in, train_out, test_in, test_out, modelname, embeddings, run_parse=False,
-            alpha=0.00001, cutoff=0.60, n_feat=2**6, n_iter=5)
+            alpha=0.00001, cutoff=0.60, n_iter=5)
+
+
 
 """
 alphas = [0.01, 0.001, 0.0001, 0.00001, 0.000001]
