@@ -1,6 +1,7 @@
 food
-coffee
 transportation
-shopping
+retail
+unknown
 bills
 health
+entertainment

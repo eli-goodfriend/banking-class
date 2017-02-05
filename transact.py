@@ -180,22 +180,6 @@ def lookupTransactions(df,common_merchants):
     cat_to_int(df)
     
 # --- functions for extracting features for fitting ---
-def make_time_feature(df):
-    # turn time string into number from [0,1) 
-    time_feature = np.ones((len(df),1))*0.5 # NaNs become 0.5
-    idx = 0
-    for index, row in df.iterrows():
-        timeString = row.time
-        if isinstance(timeString, basestring): # a full time stamp
-            hour = float(timeString[0:2])
-            minute = float(timeString[3:5])
-            second = float(timeString[6:8])
-            timeFeat = hour/24. + minute/(24.*60.) + second/(24.*60.*60.)
-            time_feature[idx,0] = timeFeat
-        idx+=1
-        
-    return time_feature
-    
 def make_amount_feature(df):
     # turn amount column into an array
     amount_feature = df.amount.values
@@ -226,16 +210,12 @@ def make_word_feature(df,embeddings):
     return word_feature
 
 def extract(df,embeddings,model_type='logreg'):
-    time_feature = make_time_feature(df)
     amount_feature = make_amount_feature(df)
     X = make_word_feature(df,embeddings)
     
-    X = np.concatenate((amount_feature,time_feature,X),axis=1)
+    X = np.concatenate((amount_feature,X),axis=1)
     
-    if (model_type=='logreg') or (model_type=='passive-aggressive'):
-        X = preprocessing.normalize(X)
-    elif model_type=='naive-bayes':
-        X = abs(X)
+    X = preprocessing.normalize(X)
     
     return X
 
@@ -253,7 +233,7 @@ def use_model(uncatData,model,embeddings,cutoff,model_type='logreg'):
         probs = model.predict_proba(X) # TODO am I doing this the long way? 
         uncat_pred = np.argmax(probs,axis=1)    
         uncat_prob = np.amax(probs,axis=1)
-        uncat_pred[uncat_prob<cutoff] = 3 # TODO
+        uncat_pred[uncat_prob<cutoff] = 3 # TODO this is 'unknown' but no one knows that
     else:
         uncat_pred = model.predict(X)
     
@@ -298,7 +278,7 @@ def run_cat(filename,modelname,fileout,embeddings,new_run=True,run_parse=True,
             model = linear_model.PassiveAggressiveClassifier(C=C,warm_start=True,
                                                              random_state=42)
         elif model_type=='naive-bayes':
-            model = naive_bayes.MultinomialNB(alpha=alpha)
+            model = naive_bayes.GaussianNB()
         else:
             raise NameError('model_type must be logreg, passive-aggressive, or naive-bayes')
     else:
