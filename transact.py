@@ -313,10 +313,10 @@ def run_test(train_in, train_out, test_in, test_out, modelname, embeddings, run_
             alpha=alpha, cutoff=cutoff, n_iter=n_iter)
     
     testData = pd.read_csv(test_out)
-    acc = metrics.accuracy_score(testData.truth, testData.category)
-    print "Overall accuracy is " + str(acc*100.) + "%"
+    precision = metrics.precision_score(testData.truth, testData.category, average='weighted')
+    print "Overall precision is " + str(precision*100.) + "%"
     
-    return acc
+    return precision
     #TODO why does the train_cat end up with so many columns?
     
     

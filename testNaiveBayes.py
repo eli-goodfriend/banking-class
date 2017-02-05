@@ -28,19 +28,20 @@ except:
 #      runs using a cv set
 # seed = 42, very dependent on seed
 # best accuracy = 74%
+# best precision = 84%
 # not good!
-acc = ts.run_test(train_in, train_out, test_in, test_out, modelname, embeddings, run_parse=False,
-                  model_type='naive-bayes', cutoff=0.5)
+prec = ts.run_test(train_in, train_out, test_in, test_out, modelname, embeddings, run_parse=False,
+                  model_type='naive-bayes', cutoff=0.7)
 
 """
 cutoffs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 # effect of cutoff
-acc = np.empty(len(cutoffs))
+prec = np.empty(len(cutoffs))
 idx = 0
 for cutoff in cutoffs:
-    acc[idx] = ts.run_test(train_in, train_out, cv_in, cv_out, modelname, embeddings, run_parse=False,
-                           alpha=0.1, cutoff=cutoff,n_iter=5)
+    prec[idx] = ts.run_test(train_in, train_out, cv_in, cv_out, modelname, embeddings, run_parse=False,
+                           cutoff=cutoff)
     idx+=1
-plt.plot(cutoffs,acc,'ro')
+plt.plot(cutoffs,prec,'ro')
 plt.show()
 """
