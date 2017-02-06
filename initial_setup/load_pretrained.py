@@ -7,7 +7,7 @@ import numpy as np
 import cPickle as pickle
 
 GLOVE_DIR = '/home/eli/Data/Narmi/'
-model_name = 'glove_embeddings'
+model_name = '/home/eli/Data/Narmi/glove_embeddings'
 
 embeddings_index = {}
 f = open(os.path.join(GLOVE_DIR, 'glove.42B.300d.txt'))

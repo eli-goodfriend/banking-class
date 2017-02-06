@@ -5,7 +5,7 @@ import transact as ts
 import numpy as np
 import matplotlib.pyplot as plt
 
-modelname = 'transaction_naive-bayes'
+modelname = 'model_data/transaction_naive-bayes'
 train_in = '/home/eli/Data/Narmi/train_cat.csv'
 train_out = '/home/eli/Data/Narmi/train_cat.csv'
 cv_in = '/home/eli/Data/Narmi/cv.csv'

@@ -17,7 +17,7 @@ import gensim
 
 # --- general utility functions
 def cat_to_int(df):
-    cats_file = 'cats.txt' # TODO hardcode
+    cats_file = '/home/eli/Dropbox/Code/Narmi/model_data/cats.txt'
     cats = pd.read_csv(cats_file,squeeze=True,header=None)
     
     df.cat_int = None
@@ -29,7 +29,7 @@ def cat_to_int(df):
                 break
             
 def int_to_cat(df):
-    cats_file = 'cats.txt' # TODO hardcode
+    cats_file = '/home/eli/Dropbox/Code/Narmi/model_data/cats.txt' # TODO hardcode
     cats = pd.read_csv(cats_file,squeeze=True,header=None)
     
     df.category = None
@@ -245,7 +245,7 @@ def cat_df(df,model,locations,embeddings,new_run,run_parse,cutoff=0.80,
     if run_parse: parseTransactions(df,'raw',locations)
     
     print "pre-categorizing 100 most common merchants"
-    common_merchants = pd.read_csv('lookup_table.csv') # TODO
+    common_merchants = pd.read_csv('model_data/lookup_table.csv') # TODO
     lookupTransactions(df,common_merchants)
     
     catData = df[~df.category.isnull()]

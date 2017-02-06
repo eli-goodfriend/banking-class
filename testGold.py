@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cPickle as pickle
 
-modelname = 'transaction_logreg'
+modelname = 'model_data/transaction_logreg'
 train_in = '/home/eli/Data/Narmi/train_cat.csv'
 train_out = '/home/eli/Data/Narmi/train_cat.csv'
 cv_in = '/home/eli/Data/Narmi/cv.csv'
