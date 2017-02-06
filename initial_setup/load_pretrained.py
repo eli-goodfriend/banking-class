@@ -5,9 +5,10 @@ data from http://nlp.stanford.edu/projects/glove/
 import os
 import numpy as np
 import cPickle as pickle
+import directories as dirs
 
-GLOVE_DIR = '/home/eli/Data/Narmi/'
-model_name = '/home/eli/Data/Narmi/glove_embeddings'
+GLOVE_DIR = dirs.data_dir
+model_name = dirs.data_dir + 'glove_embeddings'
 
 embeddings_index = {}
 f = open(os.path.join(GLOVE_DIR, 'glove.42B.300d.txt'))

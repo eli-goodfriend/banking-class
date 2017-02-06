@@ -7,9 +7,10 @@ this is done only once
 import pandas as pd
 import numpy as np
 import pickle
+import directories as dirs
 
-datafile = '/home/eli/Data/Narmi/2015_Gaz_place_national.txt'
-filename = '/home/eli/Data/Narmi/cities_by_state.pickle'
+datafile = dirs.data_dir + '2015_Gaz_place_national.txt'
+filename = dirs.data_dir + 'cities_by_state.pickle'
 
 # read the data
 all_places = pd.read_table(datafile, encoding='latin-1')

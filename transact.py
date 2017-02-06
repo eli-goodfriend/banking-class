@@ -14,10 +14,11 @@ import numpy as np
 import scipy.spatial.distance as scipy_dist
 import cPickle as pickle
 import gensim
+from initial_setup import directories as dirs
 
 # --- general utility functions
 def cat_to_int(df):
-    cats_file = '/home/eli/Dropbox/Code/Narmi/model_data/cats.txt'
+    cats_file = dirs.run_dir + 'model_data/cats.txt'
     cats = pd.read_csv(cats_file,squeeze=True,header=None)
     
     df.cat_int = None
@@ -29,7 +30,7 @@ def cat_to_int(df):
                 break
             
 def int_to_cat(df):
-    cats_file = '/home/eli/Dropbox/Code/Narmi/model_data/cats.txt' # TODO hardcode
+    cats_file = dirs.run_dir + 'model_data/cats.txt'
     cats = pd.read_csv(cats_file,squeeze=True,header=None)
     
     df.category = None
@@ -245,7 +246,8 @@ def cat_df(df,model,locations,embeddings,new_run,run_parse,cutoff=0.80,
     if run_parse: parseTransactions(df,'raw',locations)
     
     print "pre-categorizing 100 most common merchants"
-    common_merchants = pd.read_csv('model_data/lookup_table.csv') # TODO
+    lookup_file = dirs.run_dir + 'model_data/lookup_table.csv'
+    common_merchants = pd.read_csv(lookup_file)
     lookupTransactions(df,common_merchants)
     
     catData = df[~df.category.isnull()]
@@ -285,7 +287,7 @@ def run_cat(filename,modelname,fileout,embeddings,new_run=True,run_parse=True,
         modelFileLoad = open(modelname, 'rb')
         model = pickle.load(modelFileLoad)
     
-    fileCities = '/home/eli/Data/Narmi/cities_by_state.pickle' # TODO hardcode
+    fileCities = dirs.data_dir + 'cities_by_state.pickle'
     us_cities = pd.read_pickle(fileCities)
     
     df = cat_df(df,model,us_cities,embeddings,new_run,run_parse,cutoff=cutoff,

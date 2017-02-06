@@ -5,10 +5,11 @@ future iterations will refine the logistic regression and add new (words) featur
 the bulk of the operation is reading new transactions and refining the logreg
 """
 import transact as ts
+from initial_setup import directories as dirs
 
-modelname = 'transaction_logreg'
-filein = '/home/eli/Data/Narmi/train_cat.csv'
-fileout = '/home/eli/Data/Narmi/train_cat.csv'
+modelname = dirs.run_dir + 'model_data/transaction_logreg'
+filein = dirs.data_dir + 'train_cat.csv'
+fileout = dirs.data_dir + 'train_cat.csv'
 
 # running the parser takes most of the time right now, so option to shut it off
 ts.run_cat(filein,modelname,fileout,new_run=True,run_parse=False)

@@ -7,15 +7,16 @@ sys.path.append("..")
 
 import transact as ts
 import pandas as pd
+import directories as dirs
 
 num_merchants = 100 # adjust this if you want a larger seed
 
-filein = '/home/eli/Data/Narmi/anonymized_transactions.csv'
-fileout = '../model_data/lookup_table.csv'
+filein = dirs.input_file
+fileout = dirs.run_dir + 'model_data/lookup_table.csv'
 
 df = pd.read_csv(filein)
 df.columns = ['raw','amount']
-fileCities = '/home/eli/Data/Narmi/cities_by_state.pickle' # TODO hardcode
+fileCities = dirs.data_dir + 'cities_by_state.pickle' # TODO hardcode
 us_cities = pd.read_pickle(fileCities)
 
 ts.parseTransactions(df,'raw',us_cities)

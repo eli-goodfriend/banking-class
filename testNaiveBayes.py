@@ -4,20 +4,21 @@ test naive bayes
 import transact as ts
 import numpy as np
 import matplotlib.pyplot as plt
+from initial_setup import directories as dirs
 
-modelname = 'model_data/transaction_naive-bayes'
-train_in = '/home/eli/Data/Narmi/train_cat.csv'
-train_out = '/home/eli/Data/Narmi/train_cat.csv'
-cv_in = '/home/eli/Data/Narmi/cv.csv'
-cv_out = '/home/eli/Data/Narmi/cv_cat.csv'
-test_in = '/home/eli/Data/Narmi/test.csv'
-test_out = '/home/eli/Data/Narmi/test_cat.csv'
+modelname = dirs.run_dir + 'model_data/transaction_naive-bayes'
+train_in = dirs.data_dir + 'train_cat.csv'
+train_out = dirs.data_dir + 'train_cat.csv'
+cv_in = dirs.data_dir + 'cv.csv'
+cv_out = dirs.data_dir + 'cv_cat.csv'
+test_in = dirs.data_dir + 'test.csv'
+test_out = dirs.data_dir + 'test_cat.csv'
 
 # glove's pretrained model, loaded into dictionary
 try:
     cat = embeddings['cat']
 except:
-    embedding_name = '/home/eli/Data/Narmi/glove_embeddings'
+    embedding_name = dirs.data_dir + 'glove_embeddings'
     embeddingFileLoad = open(embedding_name, 'rb')
     embeddings = pickle.load(embeddingFileLoad)
 

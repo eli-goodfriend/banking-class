@@ -8,22 +8,23 @@ since I was given csv, I'm sticking with csv
 """
 import pandas as pd
 import transact as ts
+import directories as dirs
 
 def pre_cat(df):
     # use lookup table to jumpstart hand categorization
-    fileCities = '/home/eli/Data/Narmi/cities_by_state.pickle' # TODO hardcode
+    fileCities = dirs.data_dir + 'cities_by_state.pickle' # TODO hardcode
     us_cities = pd.read_pickle(fileCities)
     ts.parseTransactions(df,'raw',us_cities)
     
-    common_merchants = pd.read_csv('lookup_table.csv') # TODO
+    common_merchants = pd.read_csv(dirs.run_dir + 'model_data/lookup_table.csv')
     ts.lookupTransactions(df,common_merchants)
     
     df.drop(['description','date','time','phone','merchant','country','state','city','cat_int'],1,inplace=True)
 
-data_in = '/home/eli/Data/Narmi/anonymized_transactions.csv'
-test_out = '/home/eli/Data/Narmi/test.csv'
-train_out = '/home/eli/Data/Narmi/train.csv'
-cv_out = '/home/eli/Data/Narmi/cv.csv'
+data_in = dirs.input_file
+test_out = dirs.data_dir + 'test.csv'
+train_out = dirs.data_dir + 'train.csv'
+cv_out = dirs.data_dir + 'cv.csv'
 num_test = 400
 num_cv = 800
 num_val = num_test + num_cv

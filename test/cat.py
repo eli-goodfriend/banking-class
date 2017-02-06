@@ -11,6 +11,7 @@ import transact as ts
 import pandas as pd
 from sklearn import linear_model
 import numpy as np
+from initial_setup import directories as dirs
 
 filein = 'test_lookup.csv'
 fileout = 'test_cat.csv'
@@ -19,7 +20,7 @@ df = pd.read_csv(filein)
 try:
     cat = embeddings['cat']
 except:
-    embedding_name = 'glove_embeddings'
+    embedding_name = dirs.data_dir + 'glove_embeddings'
     embeddingFileLoad = open(embedding_name, 'rb')
     embeddings = pickle.load(embeddingFileLoad)
 
