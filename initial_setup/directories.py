@@ -1,3 +1,3 @@
-data_dir = '/home/eli/Data/Narmi/'
-run_dir = '/home/eli/Dropbox/Code/Narmi/'
-input_file = '/home/edli/Data/Narmi/anonymized_transactions.csv'
+data_dir = '/path/to/data/'
+run_dir = '/path/to/run/'
+input_file = '/path/to/data/data.csv'
