@@ -31,10 +31,9 @@ Tests and example data are available in the `test` folder.
   * Require splitting data into test and cv sets with `test/initial_split.py`, then hand categorizing those sets
 
 ### Training and running model
-3. Run training on currently available data
-  * How great? so great
-4. Categorize new data with trained model
-  * Model will continue to learn as new data become available
+Transact assumes your data is in a csv with two columns: raw transaction data and transaction amounts.
+
+A full example of initializing and training the model on mock stream data is available in `test/online.py`.  This example also includes the option to test the precision of the logistic regression model at each stage.
 
 
 ## Overview of algorithm

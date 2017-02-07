@@ -30,14 +30,14 @@ num_test = 400
 num_cv = 800
 num_val = num_test + num_cv
 
-narmi_data = pd.read_csv(data_in)
+df = pd.read_csv(data_in)
 
-narmi_data.columns = ['raw','amount']
+df.columns = ['raw','amount']
 
-narmi_data = narmi_data.sample(frac=1).reset_index(drop=True) # shuffle
+df = df.sample(frac=1).reset_index(drop=True) # shuffle
 
-test_data = narmi_data.head(num_val)
-train_data = narmi_data.tail(len(narmi_data) - num_val)
+test_data = df.head(num_val)
+train_data = df.tail(len(df) - num_val)
 cv_data = test_data.head(num_cv)
 test_data = test_data.tail(num_test)
 

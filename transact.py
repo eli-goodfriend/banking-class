@@ -1,9 +1,7 @@
 """
 collection of functions for learning to categorize banking transactions
-TODO should this be a class?
 """
 import re
-from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn import linear_model
 from sklearn import naive_bayes
 from sklearn import preprocessing
@@ -11,9 +9,7 @@ from sklearn import metrics
 from nltk import tokenize
 import pandas as pd
 import numpy as np
-import scipy.spatial.distance as scipy_dist
 import cPickle as pickle
-import gensim
 from initial_setup import directories as dirs
 
 # --- general utility functions
@@ -40,6 +36,13 @@ def int_to_cat(df):
             if cat_int == ii:
                 df.set_value(i,'category',rowrow)
                 break
+            
+def unknown():
+    cats_file = dirs.run_dir + 'model_data/cats.txt'
+    cats = pd.read_csv(cats_file,squeeze=True,header=None)
+    
+    idx = int( cats[cats=='unknown'].index[0] )
+    return idx
     
 # --- functions for parsing the raw input ---
 def throwOut(df,col,regex):
@@ -77,7 +80,7 @@ def findLocations(df, state_data):
     move(df,'description','country','(US)$')
     strip(df,'description')
     
-    # find the state # TODO untidy
+    # find the state
     us_states = state_data['state']
     states = us_states.to_string(header=False, index=False)
     states = re.sub('\n','|',states)
@@ -90,6 +93,7 @@ def findLocations(df, state_data):
     
     # find if any cities in this state are present as a substring
     # if there are, save them under 'city' column
+    # TODO this is very slow
     # TODO misses Dulles airport (probably among other airport)
     # TODO misses cities that get cut off bc they are too long
     # TODO misses cities that aren't in database bc they are technically neighborhoods
@@ -107,8 +111,6 @@ def findMerchant(df):
     df.merchant = df.merchant.str.upper() # unify representation for fitting
 
     # clean out known initial intermediary flags
-    # TODO keep this in a separate column?
-    # TODO get a list of these from somewhere?
     third_parties = ['...\*','LEVELUP\*','PAYPAL \*']
     regex = '^(' + '|'.join(third_parties) + ')'
     throwOut(df,'merchant',regex)
@@ -125,7 +127,6 @@ def findMerchant(df):
     strip(df,'merchant')
     
     # clean out strings that look like franchise numbers
-    # TODO this is not correct: too broad
     throwOut(df,'merchant','[#]?[ ]?([0-9]){1,999}$')
     strip(df,'merchant')
     
@@ -182,6 +183,7 @@ def lookupTransactions(df,common_merchants):
     
 # --- functions for extracting features for fitting ---
 def make_amount_feature(df):
+    # currently, this feature has no effect
     # turn amount column into an array
     amount_feature = df.amount.values
     amount_feature.shape = (len(amount_feature),1)
@@ -190,8 +192,8 @@ def make_amount_feature(df):
     
 def make_word_feature(df,embeddings):
     # use embeddings to vectorize merchant description
-    # TODO first cut is averaging words in description
-    #      but that might not work
+    # currently using averaging to combine words in merchant
+    # there are other options: http://stackoverflow.com/questions/29760935/how-to-get-vector-for-a-sentence-from-the-word2vec-of-tokens-in-sentence
     merchants = df.merchant.tolist()
     veclen = len(embeddings['food'])
     word_feature = np.zeros((len(merchants),veclen))
@@ -231,17 +233,17 @@ def train_model(catData,model,embeddings,model_type='logreg',new_run=False):
 def use_model(uncatData,model,embeddings,cutoff,model_type='logreg'):
     X = extract(uncatData,embeddings,model_type=model_type)
     if (model_type=='logreg') or (model_type=='naive-bayes'):
-        probs = model.predict_proba(X) # TODO am I doing this the long way? 
+        probs = model.predict_proba(X)
         uncat_pred = np.argmax(probs,axis=1)    
         uncat_prob = np.amax(probs,axis=1)
-        uncat_pred[uncat_prob<cutoff] = 3 # TODO this is 'unknown' but no one knows that
+        uncat_pred[uncat_prob<cutoff] = unknown()
     else:
         uncat_pred = model.predict(X)
     
     uncatData.cat_int = uncat_pred
     
 # --- driver functions ---
-def cat_df(df,model,locations,embeddings,new_run,run_parse,cutoff=0.80,
+def cat_df(df,model,locations,embeddings,new_run,run_parse,cutoff=0.50,
            model_type='logreg'):    
     if run_parse: parseTransactions(df,'raw',locations)
     
@@ -252,7 +254,8 @@ def cat_df(df,model,locations,embeddings,new_run,run_parse,cutoff=0.80,
     
     catData = df[~df.category.isnull()]
     uncatData = df[df.category.isnull()]
-    print str(float(len(catData))/float(len(df)) * 100.) + "% of transactions categorized with lookup."
+    print str(float(len(catData))/float(len(df)) * 100.) + \
+        "% of transactions categorized with lookup."
     
     print "training model on known merchants"
     train_model(catData,model,embeddings,model_type=model_type,new_run=new_run)
@@ -267,23 +270,23 @@ def cat_df(df,model,locations,embeddings,new_run,run_parse,cutoff=0.80,
     return df
 
 def run_cat(filename,modelname,fileout,embeddings,new_run=True,run_parse=True,
-            model_type='logreg',C=1.0,
-            alpha=0.0001, cutoff=0.80, n_iter=100):
-    df = pd.read_csv(filename)
+            model_type='logreg',C=10.0,
+            alpha=1.0, cutoff=0.50, n_iter=1):
+    df = pd.read_csv(filename) 
+    if (len(df.columns)==2): # make sure columns have the right names
+        df.columns = ['raw','amount']
     
-    if new_run:
+    if new_run: # initialize the model;
         if model_type=='logreg':
             model = linear_model.SGDClassifier(loss='log',warm_start=True,
-                                           n_iter=n_iter,alpha=alpha,
-                                           random_state=42) # TODO debug only for seed
+                                           n_iter=n_iter,alpha=alpha)
         elif model_type=='passive-aggressive':
-            model = linear_model.PassiveAggressiveClassifier(C=C,warm_start=True,
-                                                             random_state=42)
+            model = linear_model.PassiveAggressiveClassifier(C=C,warm_start=True)
         elif model_type=='naive-bayes':
             model = naive_bayes.GaussianNB()
         else:
             raise NameError('model_type must be logreg, passive-aggressive, or naive-bayes')
-    else:
+    else: # load a saved, pre-trained model
         modelFileLoad = open(modelname, 'rb')
         model = pickle.load(modelFileLoad)
     
@@ -303,8 +306,8 @@ def run_cat(filename,modelname,fileout,embeddings,new_run=True,run_parse=True,
     
 # ------ testing functions
 def run_test(train_in, train_out, test_in, test_out, modelname, embeddings, run_parse=True,
-             model_type='logreg',C=1.0,
-             alpha=0.0001, cutoff=0.80, n_iter=100):    
+             model_type='logreg',C=10.0,
+             alpha=1.0, cutoff=0.50, n_iter=1):    
     # running the parser takes most of the time right now, so option to shut it off
     run_cat(train_in,modelname,train_out,embeddings,new_run=True,run_parse=run_parse,
             model_type=model_type,C=C,
@@ -319,7 +322,6 @@ def run_test(train_in, train_out, test_in, test_out, modelname, embeddings, run_
     print "Overall precision is " + str(precision*100.) + "%"
     
     return precision
-    #TODO why does the train_cat end up with so many columns?
     
     
     
