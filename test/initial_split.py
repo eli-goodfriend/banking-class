@@ -2,17 +2,18 @@
 divide initial data set into training and test data
 the test data will be hand labeled to be a gold standard
 that's why there's only 400 test points
-
-TODO I'm not sure what data format I should be working in
-since I was given csv, I'm sticking with csv
 """
+import sys
+sys.path.append("..")
+
 import pandas as pd
 import transact as ts
 import directories as dirs
+from initial_setup import directories as dirs
 
 def pre_cat(df):
     # use lookup table to jumpstart hand categorization
-    fileCities = dirs.data_dir + 'cities_by_state.pickle' # TODO hardcode
+    fileCities = dirs.data_dir + 'cities_by_state.pickle'
     us_cities = pd.read_pickle(fileCities)
     ts.parseTransactions(df,'raw',us_cities)
     
