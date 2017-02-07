@@ -10,7 +10,7 @@ Set up utilities are located in the `initial_setup` subdirectory.
 1. Download external files and set directories
   * Set the data and run directories in `initial_setup/directories.py`
   * Download to the data directory
-    * Your banking transactions
+    * Your banking transactions, as csv
     * [City data from the US Census](http://www.census.gov/geo/maps-data/data/gazetteer2015.html)
     * [Word embeddings from GloVe](http://nlp.stanford.edu/projects/glove/)
 2. Hand categorize seed data
@@ -23,7 +23,12 @@ Set up utilities are located in the `initial_setup` subdirectory.
   * Run `initial_setup/cities_into_df.py`
 
 ### Running tests
-Tests and example data are available in the test folder.
+Tests and example data are available in the `test` folder.
+
+* Unit tests of individual functions are in `test/unit_tests.py`
+  * These tests use data included in `test/test_input.csv`
+* Full system tests of various classification models are in `test/testGold.py`
+  * Require splitting data into test and cv sets with `test/initial_split.py`, then hand categorizing those sets
 
 ### Training and running model
 3. Run training on currently available data
@@ -65,7 +70,7 @@ Transactions are categorized in two rounds. If the merchant is one of the most c
 The remaining transactions are categorized using logistic regression, with the transaction amounts and the words in the merchant description as features. 
 
 ### Word embedding
-First, the words in the merchant name are converted into vectors using a word embedding trained on [Common Crawl](commoncrawl.org) data using the [GloVe algorithm](nlp.stanford.edu/projects/glove).  Individual words are combined by averaging, although the optimal method of combining words is an area of active research.  The similarity is then measured as the cosine distance between the vectors.
+First, the words in the merchant name are converted into vectors using a word embedding trained on [Common Crawl](commoncrawl.org) data using the [GloVe algorithm](nlp.stanford.edu/projects/glove).  Individual words are combined by averaging, although the optimal method of combining words is [not known](http://stackoverflow.com/questions/29760935/how-to-get-vector-for-a-sentence-from-the-word2vec-of-tokens-in-sentence).  The similarity is then measured as the cosine distance between the vectors.
 
 I chose to use a pre-trained embedding rather than training my own, using a model like [GloVe](nlp.stanford.edu/projects/glove) or [the gensim implementation of word2vec](https://radimrehurek.com/gensim/models/word2vec.html).  Training such a model would be time consuming, not particularly enlightening, and add little value to the accuracy of this project. The best data set for categorizing banking data includes both brand names and general English words, and the web crawl accomplishes exactly that. 
 
