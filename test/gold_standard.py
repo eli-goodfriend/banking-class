@@ -139,6 +139,7 @@ def test_all():
     test_passive_aggressive()
     test_naive_bayes()
 
+test_logreg()
 
 
 

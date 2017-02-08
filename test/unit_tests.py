@@ -28,7 +28,7 @@ def test_parse():
     fileCities = dirs.data_dir + 'cities_by_state.pickle'
     us_cities = pd.read_pickle(fileCities)
     
-    ts.parseTransactions(df,'raw',us_cities)
+    ts.parse_transactions(df,'raw',us_cities)
     df.to_csv(fileout,index=False)
     
 def test_lookup():
@@ -40,7 +40,7 @@ def test_lookup():
     lookup_file = dirs.run_dir + 'model_data/lookup_table.csv'
     common_merchants = pd.read_csv(lookup_file)
     
-    ts.lookupTransactions(df,common_merchants)
+    ts.lookup_transactions(df,common_merchants)
     df.to_csv(fileout,index=False)
 
 def test_extract():

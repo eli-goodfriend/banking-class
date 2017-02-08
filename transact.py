@@ -14,6 +14,7 @@ from initial_setup import directories as dirs
 
 # --- general utility functions
 def cat_to_int(df):
+    # convert a category name into a number
     cats_file = dirs.run_dir + 'model_data/cats.txt'
     cats = pd.read_csv(cats_file,squeeze=True,header=None)
     
@@ -26,6 +27,7 @@ def cat_to_int(df):
                 break
             
 def int_to_cat(df):
+    # convert a category number into a name
     cats_file = dirs.run_dir + 'model_data/cats.txt'
     cats = pd.read_csv(cats_file,squeeze=True,header=None)
     
@@ -38,6 +40,7 @@ def int_to_cat(df):
                 break
             
 def unknown():
+    # find the category number associated with "unknown"
     cats_file = dirs.run_dir + 'model_data/cats.txt'
     cats = pd.read_csv(cats_file,squeeze=True,header=None)
     
@@ -45,26 +48,30 @@ def unknown():
     return idx
     
 # --- functions for parsing the raw input ---
-def throwOut(df,col,regex):
+def throw_out(df,col,regex):
+    # remove the regex string from column col
     df[col] = df[col].str.replace(regex,'',case = False,flags = re.IGNORECASE)
     
-def move(df,colIn,colOut,regex):
-    df[colOut] = df[colIn].str.extract(regex,flags = re.IGNORECASE,expand = True)
-    throwOut(df,colIn,regex)
+def move(df,col_in,col_out,regex):
+    # move the regex string from col_in to col_out
+    df[col_out] = df[col_in].str.extract(regex,flags = re.IGNORECASE,expand = True)
+    throw_out(df,col_in,regex)
     
 def strip(df,col):
+    # strip whitespace from ends
     df[col] = df[col].str.strip()
     
-def makeDesc(df,col):
+def make_description(df,col):
+    # inialize the description column
     df['description'] = df[col]
 
-def cleanData(df):
+def separate_cols(df):
     # use regex to pull out date and time
     move(df,'description','time','([0-9][0-9]:[0-9][0-9]:[0-9][0-9])')  
     move(df,'description','date','([0-1][0-9]/[0-3][0-9])')
 
     # remove the phrase 'Branch Cash Withdrawal' since it is in every entry
-    throwOut(df,'description','Branch Cash Withdrawal')
+    throw_out(df,'description','Branch Cash Withdrawal')
     
     # pull out any phone numbers
     # TODO misses 800-COMCAST
@@ -72,9 +79,9 @@ def cleanData(df):
     
     # remove the POS designation from the front of descriptions
     strip(df,'description')
-    throwOut(df,'description','^POS ')
+    throw_out(df,'description','^POS ')
     
-def findLocations(df, state_data):
+def find_locations(df, state_data):
     # does it end with a country code?
     # TODO country code list, not just US
     move(df,'description','country','(US)$')
@@ -113,62 +120,54 @@ def findMerchant(df):
     # clean out known initial intermediary flags
     third_parties = ['...\*','LEVELUP\*','PAYPAL \*']
     regex = '^(' + '|'.join(third_parties) + ')'
-    throwOut(df,'merchant',regex)
+    throw_out(df,'merchant',regex)
     
     # clean out strings that are more than one whitespace unit from the left
-    throwOut(df,'merchant','\s\s+.+$')
+    throw_out(df,'merchant','\s\s+.+$')
     strip(df,'merchant')
     
     # clean out the chunks of Xs that come from redacting ID numbers
-    throwOut(df,'merchant','X+-?X+')
+    throw_out(df,'merchant','X+-?X+')
     
     # clean out the leftover payment IDs
-    throwOut(df,'merchant','( ID:.*| PAYMENT ID:.*| PMT ID:.*)')
+    throw_out(df,'merchant','( ID:.*| PAYMENT ID:.*| PMT ID:.*)')
     strip(df,'merchant')
     
     # clean out strings that look like franchise numbers
-    throwOut(df,'merchant','[#]?[ ]?([0-9]){1,999}$')
+    throw_out(df,'merchant','[#]?[ ]?([0-9]){1,999}$')
     strip(df,'merchant')
     
     # clean out strings that aren't helping
-    throwOut(df,'merchant','([ ]?-[ ]?|[_])')
+    throw_out(df,'merchant','([ ]?-[ ]?|[_])')
     strip(df,'merchant')
     
     # clean out anything .com
-    throwOut(df,'merchant','[.]com.*$')
+    throw_out(df,'merchant','[.]com.*$')
     strip(df,'merchant')
     
     # clean out final single characters that also aren't helping
-    throwOut(df,'merchant',' .$')
+    throw_out(df,'merchant',' .$')
     strip(df,'merchant')
     
     # finally, if this leaves an empty merchant string, fill it with a blank space
     df.merchant = df.merchant.str.replace('^$',' ')
     
-def parseTransactions(df,col,cities):
-    """
-    parseTransactions regex parser
-    inputs df: pandas dataframe with unparsed transactions
-           col: name of column with unparsed transactions
-           cities: pandas dataframe of city names
-    updates df with new parsed columns       
-    """
-    makeDesc(df,col) # initialize the description field
+def parse_transactions(df,col,cities):
+    # separate the transaction string into useable columns
+    make_description(df,col) # initialize the description field
 
-    print 'basic cleaning...'
-    cleanData(df) # clean dates, times, phone numbers, and headers
+    print 'initial column separation...'
+    separate_cols(df) # separate dates, times, phone numbers, and headers
 
     print 'finding locations...'
-    findLocations(df,cities) # find locations, if applicable
+    find_locations(df,cities) # find locations, if applicable
 
     print 'finding merchants...'
     findMerchant(df) # extract merchant from transaction description
     
 # --- functions for looking up known merchants ---
-def lookupTransactions(df,common_merchants):
-    """
-    categorize transactions for major retailers from a lookup table
-    """
+def lookup_transactions(df,common_merchants):
+    # check if the merchant is already known
     df['category'] = None
     
     for i, row in df.iterrows():
@@ -213,6 +212,7 @@ def make_word_feature(df,embeddings):
     return word_feature
 
 def extract(df,embeddings,model_type='logreg'):
+    # extract features from transaction data for use in classifier
     amount_feature = make_amount_feature(df)
     X = make_word_feature(df,embeddings)
     
@@ -222,7 +222,8 @@ def extract(df,embeddings,model_type='logreg'):
     
     return X
 
-def train_model(catData,model,embeddings,model_type='logreg',new_run=False):    
+def train_model(catData,model,embeddings,model_type='logreg',new_run=False):
+    # train classification model on labeled data    
     X = extract(catData,embeddings,model_type=model_type) 
     y = catData.cat_int.tolist()
     if new_run:
@@ -231,6 +232,7 @@ def train_model(catData,model,embeddings,model_type='logreg',new_run=False):
         model.partial_fit(X,y)
 
 def use_model(uncatData,model,embeddings,cutoff,model_type='logreg'):
+    # use pre-trained model to classify unlabeled data
     X = extract(uncatData,embeddings,model_type=model_type)
     if (model_type=='logreg') or (model_type=='naive-bayes'):
         probs = model.predict_proba(X)
@@ -245,12 +247,13 @@ def use_model(uncatData,model,embeddings,cutoff,model_type='logreg'):
 # --- driver functions ---
 def cat_df(df,model,locations,embeddings,new_run,run_parse,cutoff=0.50,
            model_type='logreg'):    
-    if run_parse: parseTransactions(df,'raw',locations)
+    # parse and classify transactions in dataframe df
+    if run_parse: parse_transactions(df,'raw',locations)
     
     print "pre-categorizing 100 most common merchants"
     lookup_file = dirs.run_dir + 'model_data/lookup_table.csv'
     common_merchants = pd.read_csv(lookup_file)
-    lookupTransactions(df,common_merchants)
+    lookup_transactions(df,common_merchants)
     
     catData = df[~df.category.isnull()]
     uncatData = df[df.category.isnull()]
@@ -272,6 +275,7 @@ def cat_df(df,model,locations,embeddings,new_run,run_parse,cutoff=0.50,
 def run_cat(filename,modelname,fileout,embeddings,new_run=True,run_parse=True,
             model_type='logreg',C=10.0,
             alpha=1.0, cutoff=0.50, n_iter=1):
+    # pull relevant data and run parsing and classification
     df = pd.read_csv(filename) 
     if (len(df.columns)==2): # make sure columns have the right names
         df.columns = ['raw','amount']
@@ -307,7 +311,8 @@ def run_cat(filename,modelname,fileout,embeddings,new_run=True,run_parse=True,
 # ------ testing functions
 def run_test(train_in, train_out, test_in, test_out, modelname, embeddings, run_parse=True,
              model_type='logreg',C=10.0,
-             alpha=1.0, cutoff=0.50, n_iter=1):    
+             alpha=1.0, cutoff=0.50, n_iter=1):  
+    # test performance of model against a hand classified test set
     # running the parser takes most of the time right now, so option to shut it off
     run_cat(train_in,modelname,train_out,embeddings,new_run=True,run_parse=run_parse,
             model_type=model_type,C=C,

@@ -27,7 +27,7 @@ Tests and example data are available in the `test` folder.
 
 * Unit tests of individual functions are in `test/unit_tests.py`
   * These tests use data included in `test/test_input.csv`
-* Full system tests of various classification models are in `test/testGold.py`
+* Full system tests of various classification models are in `test/gold_standard.py`
   * Require splitting data into test and cv sets with `test/initial_split.py`, then hand categorizing those sets
 
 ### Training and running model

@@ -44,7 +44,7 @@ for idx in range(len(cats)):
     counts[idx] = total
 
 fig = plt.figure()
-plt.pie(counts, labels=labels,startangle=-90,colors=colors)
+plt.pie(counts, labels=labels,startangle=-90,colors=colors,autopct='%1.1f%%')
 plt.axis('equal')
 plt.title('Number of transactions by category')
 plt.show()
