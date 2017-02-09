@@ -69,9 +69,9 @@ Transactions are categorized in two rounds. If the merchant is one of the most c
 The remaining transactions are categorized using logistic regression, with the transaction amounts and the words in the merchant description as features. 
 
 ### Word embedding
-First, the words in the merchant name are converted into vectors using a word embedding trained on [Common Crawl](commoncrawl.org) data using the [GloVe algorithm](nlp.stanford.edu/projects/glove).  Individual words are combined by averaging, although the optimal method of combining words is [not known](http://stackoverflow.com/questions/29760935/how-to-get-vector-for-a-sentence-from-the-word2vec-of-tokens-in-sentence).  The similarity is then measured as the cosine distance between the vectors.
+First, the words in the merchant name are converted into vectors using a word embedding trained on [Common Crawl](http://commoncrawl.org) data using the [GloVe algorithm](http://nlp.stanford.edu/projects/glove).  Individual words are combined by averaging, although the optimal method of combining words is [not known](http://stackoverflow.com/questions/29760935/how-to-get-vector-for-a-sentence-from-the-word2vec-of-tokens-in-sentence).  The similarity is then measured as the cosine distance between the vectors.
 
-I chose to use a pre-trained embedding rather than training my own, using a model like [GloVe](nlp.stanford.edu/projects/glove) or [the gensim implementation of word2vec](https://radimrehurek.com/gensim/models/word2vec.html).  Training such a model would be time consuming, not particularly enlightening, and add little value to the accuracy of this project. The best data set for categorizing banking data includes both brand names and general English words, and the web crawl accomplishes exactly that. 
+I chose to use a pre-trained embedding rather than training my own, using a model like [GloVe](http://nlp.stanford.edu/projects/glove) or [the gensim implementation of word2vec](https://radimrehurek.com/gensim/models/word2vec.html).  Training such a model would be time consuming, not particularly enlightening, and add little value to the accuracy of this project. The best data set for categorizing banking data includes both brand names and general English words, and the web crawl accomplishes exactly that. 
 
 Word embedding models like word2vec and GloVe generally work by training a shallow neural network on word co-occurrence from a large corpus.
 
@@ -98,4 +98,4 @@ As much as this group enjoys eating out, they seem to skip breakfast.
 The code generating these plots is available in the `plotting` subdirectory.
 
 ## About me
-I am a data scientist and ex-academic based in New York City. My projects include analyzing US census data for predictors of poverty, teaching math to incarcerated students, and writing puzzle hunts.  You can find me on [LinkedIn](https://www.linkedin.com/in/eligoodfriend) and on my [personal website](www.eligoodfriend.com).
+I am a data scientist and former academic based in New York City. My projects include analyzing US census data for predictors of poverty, teaching math to incarcerated students, and writing puzzle hunts.  You can find me on [LinkedIn](https://www.linkedin.com/in/eligoodfriend) and on my [personal website](http://eligoodfriend.com).
